@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_2/screens/onboarding/LanguageSelectionScreen.dart';
+import 'package:flutter_application_2/screens/auth/UserSignUpScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,10 +12,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Login Example',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const LanguageSelectionScreen(), 
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const UserSignUpScreen(),
     );
   }
 }
