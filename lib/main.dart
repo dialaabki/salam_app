@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_2/screens/auth/ForgotPasswordScreen.dart';
+import 'package:flutter_application_2/screens/onboarding/LanguageSelectionScreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: ForgotPasswordScreen(), 
+      home: const LanguageSelectionScreen(), 
     );
   }
 }
