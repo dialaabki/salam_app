@@ -1,22 +1,21 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends StatelessWidget {
   const SignupScreen({Key? key}) : super(key: key);
-
-  @override
-  State<SignupScreen> createState() => _SignupScreenState();
-}
-
-class _SignupScreenState extends State<SignupScreen> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final scaleFactor =
-        screenWidth / 375; // Base width for scaling (iPhone 6/7/8)
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Base dimensions (for an average iPhone 11/12/13/14/15 size reference)
+    const double baseWidth = 375;
+    const double baseHeight = 812;
+
+    final widthFactor = screenWidth / baseWidth;
+    final heightFactor = screenHeight / baseHeight;
+    final scaleFactor = min(widthFactor, heightFactor);
 
     return Scaffold(
       body: Stack(
@@ -24,22 +23,21 @@ class _SignupScreenState extends State<SignupScreen> {
           // Blue background
           Container(color: const Color(0xFF276181)),
 
-          // Image at the top (centered) - different signup image
+          // Image at the top (centered)
           Positioned(
-            top: 19 * scaleFactor,
-            left:
-                (screenWidth - 287 * scaleFactor) / 2, // Centered horizontally
+            top: 20 * heightFactor,
+            left: (screenWidth - 287 * widthFactor) / 2,
             child: Image.asset(
-              'assets/images/signup_image.png', // Replace with your signup image asset path
-              width: 287 * scaleFactor,
-              height: 253 * scaleFactor,
+              'assets/images/signupaspic.png', // Change to your signup image
+              width: 287 * widthFactor,
+              height: 253 * heightFactor,
               fit: BoxFit.contain,
             ),
           ),
 
           // White container with rounded top corners
           Positioned(
-            top: (19 + 253) * scaleFactor,
+            top: (20 + 253) * heightFactor,
             left: 0,
             right: 0,
             bottom: 0,
@@ -52,224 +50,61 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 24 * scaleFactor),
+                padding: EdgeInsets.symmetric(horizontal: 24 * widthFactor),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(height: 30 * scaleFactor),
+                    SizedBox(height: 30 * heightFactor),
 
-                    // "Sign up" text
-                    Padding(
-                      padding: EdgeInsets.only(left: 6 * scaleFactor),
-                      child: Text(
-                        'Sign up',
-                        style: TextStyle(
-                          fontFamily: 'DavidLibre',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 60 * scaleFactor * 0.8, // Slightly reduced
-                          color: const Color(0xFF276181),
-                        ),
+                    // "Sign up as a" text
+                    Text(
+                      'Sign up as a',
+                      style: TextStyle(
+                        fontFamily: 'DavidLibre',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 40 * scaleFactor,
+                        color: const Color(0xFF276181),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 40 * heightFactor),
+                    
+                    // User button
+                    _buildRoleButton(
+                      'User',
+                      widthFactor,
+                      heightFactor,
+                      onPressed: () {
+                        // Navigate to user sign up
+                      },
+                    ),
+                    
+                    SizedBox(height: 30 * heightFactor),
+                    
+                    // Doctor button
+                    _buildRoleButton(
+                      'Doctor',
+                      widthFactor,
+                      heightFactor,
+                      onPressed: () {
+                        // Navigate to doctor sign up
+                      },
+                    ),
+                    
+                    SizedBox(height: 60 * heightFactor),
+                    
+                    // Bottom text
+                    Text(
+                      'To get everything ready\nfor you.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Commissioner',
+                        fontSize: 20 * scaleFactor,
+                        color: const Color(0xFFA6A6A6),
                       ),
                     ),
 
-                    SizedBox(height: 35 * scaleFactor),
-
-                    // Name label
-                    Padding(
-                      padding: EdgeInsets.only(left: 8 * scaleFactor),
-                      child: Text(
-                        'Name',
-                        style: TextStyle(
-                          fontFamily: 'Commissioner',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25 * scaleFactor * 0.8,
-                          color: const Color(0xFFA6A6A6),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 28 * scaleFactor),
-
-                    // Name input field
-                    Container(
-                      margin: EdgeInsets.only(left: 40 * scaleFactor),
-                      width: 335 * scaleFactor,
-                      height: 55 * scaleFactor,
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFEEEEEE),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              25 * scaleFactor,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20 * scaleFactor,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 46 * scaleFactor),
-
-                    // Email label
-                    Padding(
-                      padding: EdgeInsets.only(left: 8 * scaleFactor),
-                      child: Text(
-                        'Email',
-                        style: TextStyle(
-                          fontFamily: 'Commissioner',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25 * scaleFactor * 0.8,
-                          color: const Color(0xFFA6A6A6),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 28 * scaleFactor),
-
-                    // Email input field
-                    Container(
-                      margin: EdgeInsets.only(left: 40 * scaleFactor),
-                      width: 335 * scaleFactor,
-                      height: 55 * scaleFactor,
-                      child: TextField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFEEEEEE),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              25 * scaleFactor,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20 * scaleFactor,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 46 * scaleFactor),
-
-                    // Password label
-                    Padding(
-                      padding: EdgeInsets.only(left: 14 * scaleFactor),
-                      child: Text(
-                        'Password',
-                        style: TextStyle(
-                          fontFamily: 'Commissioner',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 25 * scaleFactor * 0.8,
-                          color: const Color(0xFFA6A6A6),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 25 * scaleFactor),
-
-                    // Password input field
-                    Container(
-                      margin: EdgeInsets.only(left: 40 * scaleFactor),
-                      width: 335 * scaleFactor,
-                      height: 55 * scaleFactor,
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFFEEEEEE),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              25 * scaleFactor,
-                            ),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20 * scaleFactor,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 55 * scaleFactor),
-
-                    // Sign up button
-                    Center(
-                      child: SizedBox(
-                        width: 195 * scaleFactor,
-                        height: 63 * scaleFactor,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Handle sign up
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5588A4),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                25 * scaleFactor,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'Sign up',
-                            style: TextStyle(
-                              fontFamily: 'Commissioner',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 25 * scaleFactor * 0.8,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 8 * scaleFactor),
-
-                    SizedBox(height: 52 * scaleFactor),
-
-                    // Already have account text with Log In button
-                    Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Already have an account? ",
-                            style: TextStyle(
-                              fontFamily: 'Commissioner',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15 * scaleFactor * 0.8,
-                              color: const Color(0xFFA79D9D),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              // Handle log in navigation
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              'Log In',
-                              style: TextStyle(
-                                fontFamily: 'Commissioner',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 17 * scaleFactor * 0.8,
-                                color: const Color(0xFF398BB7),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: 20 * scaleFactor),
+                    SizedBox(height: 20 * heightFactor),
                   ],
                 ),
               ),
@@ -280,11 +115,33 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
+  Widget _buildRoleButton(
+    String text,
+    double widthFactor,
+    double heightFactor, {
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 250 * widthFactor,
+      height: 80 * heightFactor,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF5588A4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25 * widthFactor),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'Commissioner',
+            fontWeight: FontWeight.bold,
+            fontSize: 30 * widthFactor,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
   }
 }
