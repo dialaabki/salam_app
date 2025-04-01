@@ -1,4 +1,4 @@
-name: flutter_application_2
+name: salam_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -69,13 +69,30 @@ flutter:
     - assets/images/loginpic.png 
     - assets/images/signupaspic.png 
     - assets/images/forgotpasswordpic.png
-<<<<<<< HEAD
     - assets/images/languagepic.png
 
-=======
     - assets/images/Verificationpic.png
     - assets/images/Thankpic.png
->>>>>>> 93aa79ec2587473fd92916f494a6e49cb0134804
+    - assets/images/selfassepic1.png
+    - assets/images/selfassepic2.png
+    - assets/images/step1pic.png
+    - assets/images/step2pic.png
+    - assets/images/step3pic.png
+    - assets/images/step4pic.png
+    - assets/images/step5pic.png
+    - assets/images/step6pic.png
+    - assets/images/depressionpic.png
+    - assets/images/anxietypic.png
+    - assets/images/adhdpic.png
+    - assets/images/ocdpic.png
+    - assets/images/addictionpic.png
+    - assets/images/bipolarpic1.png
+    - assets/images/bipolarpic2.png
+    - assets/images/larapic.png
+    - assets/images/aseelpic.png
+    - assets/images/mousapic.png
+    - assets/images/directorypic.png
+
 
 
   # To add assets to your application, add an assets section, like this:
