@@ -33,12 +33,23 @@ dependencies:
   intl: ^0.18.1
   image_picker: ^1.0.4
   file_picker: ^5.3.3
+  video_player: ^2.8.2
+  chewie: ^1.8.1
+
   google_fonts: ^6.2.1
   audioplayers: 6.4.0
   
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
+cupertino_icons: ^1.0.8
+iconsax: ^0.0.8
+image_picker: ^1.1.2
+flutter_riverpod: ^2.6.1
+dotted_line: ^3.2.3
+cached_network_image: ^3.4.1
+google_fonts: ^6.2.1
+mask_text_input_formatter: ^2.9.0
   cupertino_icons: ^1.0.8
   iconsax: ^0.0.8
 #image_picker: ^1.1.2
@@ -76,8 +87,38 @@ flutter:
     - assets/images/signupaspic.png 
     - assets/images/forgotpasswordpic.png
     - assets/images/languagepic.png
+
     - assets/images/Verificationpic.png
     - assets/images/Thankpic.png
+    - assets/images/addictionpic.png
+    - assets/images/adhdpic.png
+    - assets/images/anxietypic.png
+    - assets/images/aseelpic.png
+    - assets/images/badmarkpic.png
+    - assets/images/bipolarpic1.png
+    - assets/images/bipolarpic2.png
+    - assets/images/depressionpic.png
+    - assets/images/goodmarkpic.png
+    - assets/images/knowledgepic.png
+    - assets/images/larapic.png
+    - assets/images/mousapic.png
+    - assets/images/ocdpic.png
+    - assets/images/quizpic.png
+    - assets/images/resourcespic.png
+    - assets/images/rightpic.png
+    - assets/images/selfassepic1.png
+    - assets/images/selfassepic2.png
+    - assets/images/step1pic.png
+    - assets/images/step2pic.png
+    - assets/images/step3pic.png
+    - assets/images/step4pic.png
+    - assets/images/step5pic.png
+    - assets/images/step6pic.png
+    - assets/images/videopic.png
+    - assets/images/wrongpic.png
+    - assets/images/directorypic.png
+    - assets/videos/videoresource.mp4
+    - assets/images/nomentalissuepic.png
     - assets/images/walking_background.png
     - assets/images/W_activity_image.png
     - assets/images/WW_activity_image.png

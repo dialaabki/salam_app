@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -79,11 +79,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     SizedBox(height: 35 * heightFactor),
                     _buildLabel('Email', widthFactor, heightFactor),
-                    _buildTextField(_emailController, widthFactor, heightFactor),
+                    _buildTextField(
+                      _emailController,
+                      widthFactor,
+                      heightFactor,
+                    ),
 
                     SizedBox(height: 40 * heightFactor),
                     _buildLabel('Password', widthFactor, heightFactor),
-                    _buildTextField(_passwordController, widthFactor, heightFactor, obscureText: true),
+                    _buildTextField(
+                      _passwordController,
+                      widthFactor,
+                      heightFactor,
+                      obscureText: true,
+                    ),
 
                     SizedBox(height: 55 * heightFactor),
                     _buildLoginButton(widthFactor, heightFactor),
@@ -133,7 +142,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, double widthFactor, double heightFactor, {bool obscureText = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    double widthFactor,
+    double heightFactor, {
+    bool obscureText = false,
+  }) {
     return Container(
       margin: EdgeInsets.only(left: 20 * widthFactor),
       width: 335 * widthFactor,

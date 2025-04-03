@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ForgotPasswordScreen extends StatelessWidget {
   final _emailController = TextEditingController();
 
-  ForgotPasswordScreen({Key? key}) : super(key: key);
+  ForgotPasswordScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +91,11 @@ class ForgotPasswordScreen extends StatelessWidget {
 
                     // Email field
                     _buildLabel('Email', widthFactor, heightFactor),
-                    _buildTextField(_emailController, widthFactor, heightFactor),
+                    _buildTextField(
+                      _emailController,
+                      widthFactor,
+                      heightFactor,
+                    ),
 
                     SizedBox(height: 55 * heightFactor),
 
@@ -169,7 +173,11 @@ class ForgotPasswordScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, double widthFactor, double heightFactor) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    double widthFactor,
+    double heightFactor,
+  ) {
     return Container(
       margin: EdgeInsets.only(left: 20 * widthFactor),
       width: 335 * widthFactor,
@@ -183,9 +191,7 @@ class ForgotPasswordScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,
           ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 20 * widthFactor,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20 * widthFactor),
         ),
       ),
     );

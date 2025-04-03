@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class SignupScreen extends StatelessWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  const SignupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +66,9 @@ class SignupScreen extends StatelessWidget {
                         color: const Color(0xFF276181),
                       ),
                     ),
-                    
+
                     SizedBox(height: 40 * heightFactor),
-                    
+
                     // User button
                     _buildRoleButton(
                       'User',
@@ -78,9 +78,9 @@ class SignupScreen extends StatelessWidget {
                         // Navigate to user sign up
                       },
                     ),
-                    
+
                     SizedBox(height: 30 * heightFactor),
-                    
+
                     // Doctor button
                     _buildRoleButton(
                       'Doctor',
@@ -90,9 +90,9 @@ class SignupScreen extends StatelessWidget {
                         // Navigate to doctor sign up
                       },
                     ),
-                    
+
                     SizedBox(height: 60 * heightFactor),
-                    
+
                     // Bottom text
                     Text(
                       'To get everything ready\nfor you.',
