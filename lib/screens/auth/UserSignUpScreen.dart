@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UserSignUpScreen extends StatefulWidget {
-  const UserSignUpScreen({Key? key}) : super(key: key);
+  const UserSignUpScreen({super.key});
 
   @override
   State<UserSignUpScreen> createState() => _UserSignUpScreenState();
@@ -300,7 +300,7 @@ class _UserSignUpScreenState extends State<UserSignUpScreen> {
     bool isPassword = false,
     String hintText = '',
   }) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 55 * scaleFactor,
       child: TextField(

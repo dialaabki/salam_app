@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ADHDScreen extends StatefulWidget {
-  const ADHDScreen({Key? key}) : super(key: key);
+  const ADHDScreen({super.key});
 
   @override
   State<ADHDScreen> createState() => _ADHDScreenState();

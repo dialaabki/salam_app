@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AccountVerificationScreen extends StatefulWidget {
-  const AccountVerificationScreen({Key? key}) : super(key: key);
+  const AccountVerificationScreen({super.key});
 
   @override
   State<AccountVerificationScreen> createState() =>

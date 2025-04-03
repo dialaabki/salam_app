@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 
 class DoctorSignUpScreen extends StatefulWidget {
-  const DoctorSignUpScreen({Key? key}) : super(key: key);
+  const DoctorSignUpScreen({super.key});
 
   @override
   State<DoctorSignUpScreen> createState() => _DoctorSignUpScreenState();
@@ -75,8 +75,14 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildLabelWithAsterisk('First Name', scaleFactor),
-                              _buildTextField(_firstNameController, scaleFactor),
+                              _buildLabelWithAsterisk(
+                                'First Name',
+                                scaleFactor,
+                              ),
+                              _buildTextField(
+                                _firstNameController,
+                                scaleFactor,
+                              ),
                             ],
                           ),
                         ),
@@ -117,7 +123,9 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
                           height: 55 * scaleFactor,
                           decoration: BoxDecoration(
                             color: const Color(0xFFEEEEEE),
-                            borderRadius: BorderRadius.circular(25 * scaleFactor),
+                            borderRadius: BorderRadius.circular(
+                              25 * scaleFactor,
+                            ),
                           ),
                           child: Center(
                             child: Text(
@@ -168,9 +176,10 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
                             _birthDate,
                             style: TextStyle(
                               fontSize: 16 * scaleFactor,
-                              color: _birthDate == 'DD/MM/YYYY'
-                                  ? Colors.grey
-                                  : Colors.black,
+                              color:
+                                  _birthDate == 'DD/MM/YYYY'
+                                      ? Colors.grey
+                                      : Colors.black,
                             ),
                           ),
                         ),
@@ -207,14 +216,18 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
                               _uploadFileAndSignUp();
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Please upload a document')),
+                                SnackBar(
+                                  content: Text('Please upload a document'),
+                                ),
                               );
                             }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF5588A4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25 * scaleFactor),
+                              borderRadius: BorderRadius.circular(
+                                25 * scaleFactor,
+                              ),
                             ),
                           ),
                           child: Text(
@@ -244,12 +257,12 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
     // Implement your file upload and sign up logic here
     // You can access the selected file with _selectedFile
     // and other form fields with their respective controllers
-    
+
     // Example:
     // final firstName = _firstNameController.text;
     // final lastName = _lastNameController.text;
     // etc...
-    
+
     // Then upload the file to your server along with other data
   }
 
@@ -262,7 +275,7 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
     }
 
     setState(() => _isUploading = true);
-    
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -276,9 +289,9 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking file: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking file: $e')));
     } finally {
       setState(() => _isUploading = false);
     }
@@ -293,10 +306,12 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
     }
 
     setState(() => _isUploading = true);
-    
+
     try {
-      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-      
+      final pickedFile = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+      );
+
       if (pickedFile != null) {
         setState(() {
           _selectedFile = File(pickedFile.path);
@@ -304,9 +319,9 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
     } finally {
       setState(() => _isUploading = false);
     }
@@ -378,29 +393,30 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
               vertical: 12 * scaleFactor,
             ),
           ),
-          child: _isUploading
-              ? SizedBox(
-                  width: 20 * scaleFactor,
-                  height: 20 * scaleFactor,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.upload_file, size: 20 * scaleFactor),
-                    SizedBox(width: 8 * scaleFactor),
-                    Text(
-                      'Upload Document',
-                      style: TextStyle(
-                        fontSize: 16 * scaleFactor,
-                        color: Colors.white,
-                      ),
+          child:
+              _isUploading
+                  ? SizedBox(
+                    width: 20 * scaleFactor,
+                    height: 20 * scaleFactor,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
                     ),
-                  ],
-                ),
+                  )
+                  : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.upload_file, size: 20 * scaleFactor),
+                      SizedBox(width: 8 * scaleFactor),
+                      Text(
+                        'Upload Document',
+                        style: TextStyle(
+                          fontSize: 16 * scaleFactor,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
         ),
         SizedBox(height: 5 * scaleFactor),
         Text(
@@ -458,10 +474,7 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
           ),
           Text(
             ' *',
-            style: TextStyle(
-              color: Colors.red,
-              fontSize: 20 * scaleFactor,
-            ),
+            style: TextStyle(color: Colors.red, fontSize: 20 * scaleFactor),
           ),
         ],
       ),
@@ -473,7 +486,7 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
     double scaleFactor, {
     bool isPassword = false,
   }) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 55 * scaleFactor,
       child: TextField(
@@ -486,9 +499,7 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
             borderRadius: BorderRadius.circular(25 * scaleFactor),
             borderSide: BorderSide.none,
           ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 20 * scaleFactor,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 20 * scaleFactor),
         ),
       ),
     );
@@ -507,12 +518,7 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
           },
           activeColor: const Color(0xFF5588A4),
         ),
-        Text(
-          gender,
-          style: TextStyle(
-            fontSize: 16 * scaleFactor,
-          ),
-        ),
+        Text(gender, style: TextStyle(fontSize: 16 * scaleFactor)),
       ],
     );
   }
@@ -530,24 +536,19 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
         value: _selectedDocument,
         hint: Text(
           'Select document type',
-          style: TextStyle(
-            fontSize: 16 * scaleFactor,
-            color: Colors.grey,
-          ),
+          style: TextStyle(fontSize: 16 * scaleFactor, color: Colors.grey),
         ),
         isExpanded: true,
         underline: Container(),
-        items: [
-          'Medical License',
-          'Specialty Certification',
-          'ID Proof',
-          'Other'
-        ].map((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value),
-          );
-        }).toList(),
+        items:
+            [
+              'Medical License',
+              'Specialty Certification',
+              'ID Proof',
+              'Other',
+            ].map((String value) {
+              return DropdownMenuItem<String>(value: value, child: Text(value));
+            }).toList(),
         onChanged: (newValue) {
           setState(() {
             _selectedDocument = newValue;
@@ -566,7 +567,8 @@ class _DoctorSignUpScreenState extends State<DoctorSignUpScreen> {
     );
     if (picked != null) {
       setState(() {
-        _birthDate = '${picked.day.toString().padLeft(2,'0')}/${picked.month.toString().padLeft(2,'0')}/${picked.year}';
+        _birthDate =
+            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
       });
     }
   }

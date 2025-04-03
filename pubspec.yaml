@@ -33,6 +33,9 @@ dependencies:
   intl: ^0.18.1
   image_picker: ^1.0.4
   file_picker: ^5.3.3
+  video_player: ^2.8.2
+  chewie: ^1.8.1
+
   
 
   # The following adds the Cupertino Icons font to your application.
@@ -103,6 +106,9 @@ flutter:
     - assets/images/step6pic.png
     - assets/images/videopic.png
     - assets/images/wrongpic.png
+    - assets/images/directorypic.png
+    - assets/videos/videoresource.mp4
+    - assets/images/nomentalissuepic.png
 
 
   # To add assets to your application, add an assets section, like this:

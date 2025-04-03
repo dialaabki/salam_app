@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class OCDScreen extends StatefulWidget {
-  const OCDScreen({Key? key}) : super(key: key);
+  const OCDScreen({super.key});
 
   @override
   State<OCDScreen> createState() => _OCDScreenState();

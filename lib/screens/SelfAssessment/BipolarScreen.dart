@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BipolarScreen extends StatefulWidget {
-  const BipolarScreen({Key? key}) : super(key: key);
+  const BipolarScreen({super.key});
 
   @override
   State<BipolarScreen> createState() => _BipolarScreenState();

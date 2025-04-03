@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class DepressionScreen extends StatefulWidget {
-  const DepressionScreen({Key? key}) : super(key: key);
+  const DepressionScreen({super.key});
 
   @override
   State<DepressionScreen> createState() => _DepressionScreenState();

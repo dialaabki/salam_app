@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AddictionScreen extends StatefulWidget {
-  const AddictionScreen({Key? key}) : super(key: key);
+  const AddictionScreen({super.key});
 
   @override
   State<AddictionScreen> createState() => _AddictionScreenState();
 }
 
 class _AddictionScreenState extends State<AddictionScreen> {
+  // --- UI Styling Constants ---
   final Color _primaryColor = const Color(0xFF5588A4);
   final Color _borderColor = const Color(0xFF276181);
   final Color _inactiveColor = Colors.grey.shade400;
@@ -16,7 +17,9 @@ class _AddictionScreenState extends State<AddictionScreen> {
   final Color _optionTextColor = Colors.black54;
   final Color _checklistLabelColor = Colors.grey.shade600;
 
-  // State for selected substances
+  // --- State Variables ---
+
+  // State for selected substances checklist
   final Map<String, bool> _selectedSubstances = {
     'Alcohol': false,
     'Cannabis': false,
@@ -29,8 +32,9 @@ class _AddictionScreenState extends State<AddictionScreen> {
     'Other': false,
     'Nothing': false, // Mutually exclusive option
   };
+
+  // Examples for substances (optional display)
   final Map<String, String> _substanceExamples = {
-    // Keep examples
     'Alcohol': 'examples: Beer, Wine, vodka, whiskey',
     'Cannabis': 'examples: Marijuana, Hashish',
     'Stimulants': 'examples: Cocaine, crystal meth, Adderall, Ritalin',
@@ -42,14 +46,15 @@ class _AddictionScreenState extends State<AddictionScreen> {
     'Inhalants': 'examples: Glue, Paint thinner, Gasoline,',
     'Tobacco & Nicotine':
         'examples: Cigarettes, Cigars, E-cigarettes (vapes), Chewing tobacco',
-    'Other': '',
+    'Other': '', // No examples for Other/Nothing
     'Nothing': '',
   };
 
-  // State for Yes/No answers (Q1-11), initialized to null
+  // State for Yes/No answers (Q1-11), corresponding to DSM-5 criteria for SUD
+  // Initialized to null (unanswered)
   final List<bool?> _yesNoAnswers = List.filled(11, null);
 
-  // Yes/No questions list (remains the same as provided)
+  // List of Yes/No questions based on DSM-5 SUD criteria
   final List<Map<String, dynamic>> _yesNoQuestions = [
     {
       'id': 1,
@@ -99,8 +104,8 @@ class _AddictionScreenState extends State<AddictionScreen> {
     {
       'id': 10,
       'question':
-          'Q10. Do you need to use more of [substance] to achieve the same effect, or does the same amount have less effect than before?',
-    },
+          'Q10. Do you need to use more of [substance] to achieve the same effect, or does the same amount have less effect than before? (Tolerance)',
+    }, // Added context
     {
       'id': 11,
       'question':
@@ -108,91 +113,106 @@ class _AddictionScreenState extends State<AddictionScreen> {
     },
   ];
 
-  // Helper to determine if Yes/No questions should be shown
+  // --- Computed Property ---
+
+  // Helper getter to determine if Yes/No questions should be shown.
+  // Returns true ONLY if at least one substance (and NOT 'Nothing') is selected.
   bool get _shouldShowYesNoQuestions => _selectedSubstances.entries.any(
     (e) => e.key != 'Nothing' && e.value == true,
   );
 
+  // --- Build Method ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Substance Use (Step 6)'), // Added step number
+        title: const Text('Substance Use (Step 6 of 6)'), // Updated step count
         backgroundColor: _primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, false), // Pop with false
+          // Return false when popping back manually (indicates incomplete)
+          onPressed:
+              () => Navigator.pop(context, null), // Return null for manual back
         ),
       ),
       body: SingleChildScrollView(
+        // Allows scrolling if content overflows
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeaderImage(),
+            _buildHeaderImage(), // Display step indicator image
             const SizedBox(height: 24.0),
-            _buildSubstanceChecklist(),
+            _buildSubstanceChecklist(), // Build the checklist section
             const SizedBox(height: 10),
-            Divider(color: _dividerColor, thickness: 1.0),
+            Divider(color: _dividerColor, thickness: 1.0), // Separator
             const SizedBox(height: 20),
 
-            // Conditionally display Yes/No questions only if a substance (not 'Nothing') is selected
+            // *** CONDITIONAL DISPLAY LOGIC ***
+            // Only build the Yes/No questions ListView if _shouldShowYesNoQuestions is true
             if (_shouldShowYesNoQuestions)
               ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true, // Takes only needed vertical space
+                physics:
+                    const NeverScrollableScrollPhysics(), // Disables internal scrolling
                 itemCount: _yesNoQuestions.length,
                 itemBuilder: (context, index) {
+                  // Build each Yes/No question block
                   return _buildYesNoQuestionBlock(index);
                 },
                 separatorBuilder: (context, index) {
+                  // Build dividers between questions
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: Divider(color: _dividerColor, thickness: 1.0),
                   );
                 },
               ),
+            // Display a message if 'Nothing' is selected (and thus questions are hidden)
             if (!_shouldShowYesNoQuestions &&
                 _selectedSubstances['Nothing'] == true)
               Padding(
-                // Message if 'Nothing' is selected
                 padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: Center(
                   child: Text(
                     "No further questions required.",
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ),
 
+            // *** END CONDITIONAL DISPLAY LOGIC ***
             const SizedBox(height: 30.0),
-            _buildFinishButton(),
+            _buildFinishButton(), // Build the finish button
             const SizedBox(height: 12.0),
-            _buildSaveLink(),
-            const SizedBox(height: 20.0),
+            _buildSaveLink(), // Build the "save later" link
+            const SizedBox(height: 20.0), // Bottom padding
           ],
         ),
       ),
     );
   }
 
+  // --- Widget Builder Helper Methods ---
+
   Widget _buildHeaderImage() {
-    // (Header image build logic remains the same)
-    const String imagePath = 'assets/images/step6pic.png';
+    const String imagePath =
+        'assets/images/step6pic.png'; // Ensure this asset exists
     return Center(
       child: Image.asset(
         imagePath,
-        height: 60, // Example height
+        height: 60, // Adjust height as needed
         errorBuilder: (context, error, stackTrace) {
-          print("Error loading image: $error");
+          print("Error loading image '$imagePath': $error"); // Log error
+          // Provide a fallback UI element
           return Container(
             height: 60,
-            color: _inactiveColor.withOpacity(0.5),
+            color: _inactiveColor.withOpacity(0.3),
             child: const Center(
-              child: Text(
-                'Image Error',
-                style: TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           );
         },
@@ -204,21 +224,23 @@ class _AddictionScreenState extends State<AddictionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Instruction text
         Text(
-          'Select the substances you have used in the past 12 months. (Check all that apply, or select "Nothing")', // Updated instructions
+          'Select the substances you have used in the past 12 months. (Check all that apply, or select "Nothing")',
           style: TextStyle(
             fontSize: 16.0,
             fontWeight: FontWeight.w600,
             color: _questionTextColor,
-            height: 1.4,
+            height: 1.4, // Line spacing
           ),
         ),
         const SizedBox(height: 16.0),
+        // Generate checklist items from the map keys
         ..._selectedSubstances.keys.map((String key) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 4.0),
             child: InkWell(
-              // Make the whole row tappable
+              // Makes the whole row tappable for better UX
               onTap:
                   () => _handleSubstanceSelection(
                     key,
@@ -229,35 +251,40 @@ class _AddictionScreenState extends State<AddictionScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Row(
                   children: [
+                    // Checkbox widget
                     SizedBox(
-                      width: 24,
+                      width: 24, // Constrain size
                       height: 24,
                       child: Checkbox(
                         value: _selectedSubstances[key],
                         onChanged:
                             (bool? value) =>
                                 _handleSubstanceSelection(key, value!),
-                        activeColor: _primaryColor,
-                        side: BorderSide(color: _inactiveColor, width: 2),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        activeColor: _primaryColor, // Color when checked
+                        side: BorderSide(
+                          color: _inactiveColor,
+                          width: 1.5,
+                        ), // Border when unchecked
+                        materialTapTargetSize:
+                            MaterialTapTargetSize.shrinkWrap, // Reduce tap area
                       ),
                     ),
                     const SizedBox(width: 10),
+                    // Substance name and examples
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            key,
+                            key, // Substance name
                             style: TextStyle(
                               fontSize: 15.0,
                               color: _optionTextColor,
                             ),
                           ),
-                          if (_substanceExamples[key] != null &&
-                              _substanceExamples[key]!.isNotEmpty)
+                          // Display examples if available
+                          if (_substanceExamples[key]?.isNotEmpty ?? false)
                             Padding(
-                              // Add padding for examples
                               padding: const EdgeInsets.only(top: 2.0),
                               child: Text(
                                 _substanceExamples[key]!,
@@ -276,135 +303,170 @@ class _AddictionScreenState extends State<AddictionScreen> {
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
 
-  // Helper function to manage exclusive selection of "Nothing"
+  // Handles the logic for substance selection, ensuring "Nothing" is exclusive
   void _handleSubstanceSelection(String key, bool value) {
     setState(() {
       if (key == 'Nothing') {
-        // If 'Nothing' is selected, deselect all others
-        _selectedSubstances.updateAll((k, v) => k == 'Nothing' ? value : false);
-        // Clear Yes/No answers if Nothing is selected
-        if (value) _yesNoAnswers.fillRange(0, _yesNoAnswers.length, null);
+        // If 'Nothing' is checked (value is true)
+        if (value) {
+          // Deselect all other substances
+          _selectedSubstances.updateAll((k, v) => false);
+          // Set 'Nothing' to true
+          _selectedSubstances['Nothing'] = true;
+          // Clear all Yes/No answers as they are not needed
+          _yesNoAnswers.fillRange(0, _yesNoAnswers.length, null);
+        } else {
+          // If 'Nothing' is unchecked, just update its value
+          _selectedSubstances['Nothing'] = false;
+        }
       } else {
-        // If any other substance is selected, deselect 'Nothing'
+        // If any other substance is checked/unchecked
         _selectedSubstances[key] = value;
+        // If this substance is being checked (value is true), ensure 'Nothing' is unchecked
         if (value) {
           _selectedSubstances['Nothing'] = false;
         }
       }
-      // If no substances (except potentially 'Nothing') are selected, clear Y/N answers
-      if (!_shouldShowYesNoQuestions) {
+
+      // After any change, check if Yes/No questions should still be shown.
+      // If not (e.g., all substances unchecked), clear the Yes/No answers.
+      if (!_shouldShowYesNoQuestions &&
+          _selectedSubstances['Nothing'] == false) {
         _yesNoAnswers.fillRange(0, _yesNoAnswers.length, null);
       }
     });
   }
 
+  // Builds a single Yes/No question block
   Widget _buildYesNoQuestionBlock(int index) {
+    // Get question data from the list
     final questionData = _yesNoQuestions[index];
     final String questionText = questionData['question'];
     final int questionId = questionData['id'];
-    final answerIndex =
-        questionId - 1; // Yes/No questions map 1-11 to indices 0-10
+    // Calculate the corresponding index in the _yesNoAnswers list (0-based)
+    final answerIndex = questionId - 1;
 
-    // Safety check
+    // Basic validation for index bounds
     if (answerIndex < 0 || answerIndex >= _yesNoAnswers.length) {
       print(
         "Error: Invalid answer index $answerIndex for Y/N question ID: $questionId",
       );
-      return const SizedBox.shrink();
+      return const SizedBox.shrink(); // Return empty widget on error
     }
 
-    // Determine the substance placeholder text
+    // Determine the text to replace '[substance]' placeholder
     List<String> selected =
         _selectedSubstances.entries
-            .where((e) => e.key != 'Nothing' && e.value == true)
-            .map((e) => e.key)
+            .where(
+              (e) => e.key != 'Nothing' && e.value == true,
+            ) // Filter selected substances (excluding 'Nothing')
+            .map((e) => e.key) // Get their names
             .toList();
-    String substancePlaceholder = "the substance(s) you selected";
+
+    String substancePlaceholder;
     if (selected.length == 1) {
-      substancePlaceholder = "your use of ${selected[0]}";
+      substancePlaceholder =
+          "your use of ${selected[0]}"; // Specific substance if only one selected
     } else if (selected.isEmpty) {
-      // Should not happen if questions are shown, but as a fallback
-      substancePlaceholder = "substance use";
+      substancePlaceholder =
+          "substance use"; // Fallback (shouldn't happen if questions are shown)
+    } else {
+      substancePlaceholder =
+          "the substance(s) you selected"; // Generic if multiple selected
     }
 
+    // Build the question text and options
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(right: 8.0),
+          padding: const EdgeInsets.only(
+            right: 8.0,
+          ), // Avoid text touching edge
           child: Text(
-            questionText.replaceAll(
-              '[substance]',
-              substancePlaceholder,
-            ), // Replace placeholder
+            // Replace the placeholder in the question string
+            questionText.replaceAll('[substance]', substancePlaceholder),
             style: TextStyle(
               fontSize: 16.0,
               fontWeight: FontWeight.w600,
               color: _questionTextColor,
-              height: 1.4,
+              height: 1.4, // Line spacing
             ),
           ),
         ),
         const SizedBox(height: 16.0),
+        // Build the 'Yes' and 'No' radio button options
         _buildYesNoOptions(answerIndex, ['Yes', 'No']),
       ],
     );
   }
 
+  // Builds the Yes/No radio button row for a given question index
   Widget _buildYesNoOptions(int answerIndex, List<String> options) {
-    // (Yes/No build logic remains the same, uses true/false for bool list)
     return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start, // Align options to the left
       children: List.generate(options.length, (optionIndex) {
-        final bool? expectedValue =
-            optionIndex == 0 ? true : false; // Yes = true, No = false
-        final bool isSelected = _yesNoAnswers[answerIndex] == expectedValue;
+        // Determine the boolean value this option represents (Yes=true, No=false)
+        final bool optionRepresentsValue = optionIndex == 0;
+        // Check if this option is currently selected
+        final bool isSelected =
+            _yesNoAnswers[answerIndex] == optionRepresentsValue;
 
         return Padding(
-          padding: EdgeInsets.only(
-            right: optionIndex == 0 ? 30.0 : 0,
-            left: 0, // Start from left edge
-          ),
+          // Add spacing between 'Yes' and 'No' options
+          padding: EdgeInsets.only(right: optionIndex == 0 ? 30.0 : 0),
           child: InkWell(
+            // Make option tappable
             onTap: () {
               setState(() {
-                _yesNoAnswers[answerIndex] = expectedValue;
+                // Update the answer state for this question index
+                _yesNoAnswers[answerIndex] = optionRepresentsValue;
               });
             },
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(
+              8,
+            ), // Rounded corners for tap effect
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min, // Row takes minimum space
               children: [
+                // Custom radio button appearance
                 Container(
                   width: 22.0,
                   height: 22.0,
-                  margin: const EdgeInsets.only(right: 8.0),
+                  margin: const EdgeInsets.only(
+                    right: 8.0,
+                  ), // Space between circle and text
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? _borderColor : _inactiveColor,
+                      color:
+                          isSelected
+                              ? _borderColor
+                              : _inactiveColor, // Border color changes if selected
                       width: 2.0,
                     ),
                   ),
+                  // Show inner circle if selected
                   child:
                       isSelected
                           ? Center(
                             child: Container(
-                              width: 10.0,
+                              width: 10.0, // Size of inner circle
                               height: 10.0,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: _borderColor,
+                                color: _borderColor, // Color of inner circle
                               ),
                             ),
                           )
-                          : null,
+                          : null, // No inner circle if not selected
                 ),
+                // Option text ('Yes' or 'No')
                 Text(
                   options[optionIndex],
                   style: TextStyle(fontSize: 15.0, color: _optionTextColor),
@@ -417,89 +479,108 @@ class _AddictionScreenState extends State<AddictionScreen> {
     );
   }
 
+  // Builds the final "Finish Assessment" button
   Widget _buildFinishButton() {
     return Center(
       child: ElevatedButton(
-        // ***MODIFIED onPressed***
         onPressed: () {
-          // 1. Validate: Check if at least one substance OR 'Nothing' is selected
-          bool substanceSelected = _selectedSubstances.containsValue(true);
-          if (!substanceSelected) {
+          // --- Validation Logic ---
+          // 1. Check if ANYTHING is selected (either a substance or 'Nothing')
+          bool anySubstanceOptionSelected = _selectedSubstances.containsValue(
+            true,
+          );
+          if (!anySubstanceOptionSelected) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
                   'Please select the substance(s) you used, or select "Nothing".',
                 ),
                 backgroundColor: Colors.orangeAccent,
-                duration: Duration(seconds: 3),
               ),
             );
-            return; // Stop if nothing is selected
+            return; // Stop execution
           }
 
-          // 2. Validate Yes/No questions ONLY IF a substance (not 'Nothing') was selected
-          bool allYesNoAnswered = true; // Assume true if 'Nothing' selected
+          // 2. Check if Yes/No questions need to be answered and if they are
+          bool allYesNoAnswered =
+              true; // Default to true (handles 'Nothing' case)
           if (_shouldShowYesNoQuestions) {
-            allYesNoAnswered = !_yesNoAnswers.contains(null);
+            // Only validate if questions are visible
+            allYesNoAnswered =
+                !_yesNoAnswers.contains(
+                  null,
+                ); // Check if any answer is still null
             if (!allYesNoAnswered) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Please answer all Yes/No questions (Q1-Q11).'),
                   backgroundColor: Colors.orangeAccent,
-                  duration: Duration(seconds: 2),
                 ),
               );
-              return; // Stop if Yes/No questions are required but not answered
+              return; // Stop execution
             }
           }
 
-          // 3. If valid, prepare results map and pop
+          // --- Data Preparation & Navigation ---
+          // If all validations pass:
           final results = {
-            'selectedSubstances': _selectedSubstances,
-            // Send empty list if 'Nothing' was selected, otherwise send answers
+            'selectedSubstances': Map<String, bool>.from(
+              _selectedSubstances,
+            ), // Send a copy
+            // Send the answers list ONLY if questions were shown, otherwise send empty list
             'yesNoAnswers':
-                _shouldShowYesNoQuestions ? _yesNoAnswers : <bool?>[],
+                _shouldShowYesNoQuestions
+                    ? List<bool?>.from(_yesNoAnswers)
+                    : <bool?>[],
           };
-          print('Step 6 (Addiction) Answers: $results');
-          Navigator.pop(context, results); // Return the map of answers
+
+          print(
+            'Step 6 (Addiction) Results: $results',
+          ); // Log results for debugging
+          Navigator.pop(context, results); // Pop screen and return results map
         },
-        // *** END MODIFIED onPressed***
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor,
-          foregroundColor: Colors.white,
+          backgroundColor: _primaryColor, // Button background color
+          foregroundColor: Colors.white, // Button text color
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25.0),
+            borderRadius: BorderRadius.circular(25.0), // Rounded corners
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 60.0, vertical: 14.0),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 60.0,
+            vertical: 14.0,
+          ), // Button padding
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          elevation: 2,
+          elevation: 2, // Subtle shadow
         ),
-        child: const Text('Finish Assessment'), // Changed text slightly
+        child: const Text('Finish Assessment'),
       ),
     );
   }
 
+  // Builds the "Save and continue later" link
   Widget _buildSaveLink() {
-    // (Save link logic remains the same)
     return Center(
       child: InkWell(
         onTap: () {
           print('Save and continue later tapped');
-          // TODO: Implement save functionality if needed
+          // Placeholder for save functionality
+          // TODO: Implement actual save logic if required
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Save functionality not implemented yet.'),
+              content: Text('Save functionality not yet implemented.'),
               duration: Duration(seconds: 2),
             ),
           );
+          // Optionally pop or navigate elsewhere after saving attempt
+          // Navigator.pop(context, null); // Example: pop after attempting save
         },
         child: Text(
           'Save and continue later >>',
           style: TextStyle(
             fontSize: 14,
             color: _primaryColor,
-            decoration: TextDecoration.underline,
-            decorationColor: _primaryColor,
+            decoration: TextDecoration.underline, // Underline to indicate link
+            decorationColor: _primaryColor, // Match underline color
           ),
         ),
       ),

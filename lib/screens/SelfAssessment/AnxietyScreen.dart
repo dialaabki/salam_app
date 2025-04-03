@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AnxietyScreen extends StatefulWidget {
-  const AnxietyScreen({Key? key}) : super(key: key);
+  const AnxietyScreen({super.key});
   @override
   State<AnxietyScreen> createState() => _AnxietyScreenState();
 }

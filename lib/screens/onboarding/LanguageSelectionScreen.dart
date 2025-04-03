@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 class LanguageSelectionScreen extends StatelessWidget {
-  const LanguageSelectionScreen({Key? key}) : super(key: key);
+  const LanguageSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +65,7 @@ class LanguageSelectionScreen extends StatelessWidget {
                         color: const Color(0xFF276181), // Your blue color
                       ),
                     ),
-                    
+
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: 30 * scaleFactor),
                       child: Image.asset(
@@ -75,7 +75,7 @@ class LanguageSelectionScreen extends StatelessWidget {
                         fit: BoxFit.contain,
                       ),
                     ),
-                    
+
                     Text(
                       'Choose a language to make the app yours!',
                       style: TextStyle(
@@ -95,7 +95,8 @@ class LanguageSelectionScreen extends StatelessWidget {
                         fontFamily: 'Montserrat', // Changed font
                         fontWeight: FontWeight.bold,
                         fontSize: 20 * scaleFactor,
-                        color: const Color(0xFF276181)), // Your blue color
+                        color: const Color(0xFF276181),
+                      ), // Your blue color
                     ),
                   ],
                 ),
@@ -126,9 +127,10 @@ class LanguageSelectionScreen extends StatelessWidget {
             fontFamily: 'Commissioner',
             fontWeight: FontWeight.bold,
             fontSize: 20 * scaleFactor,
-            color: Colors.white),
+            color: Colors.white,
           ),
         ),
-      );
+      ),
+    );
   }
 }
