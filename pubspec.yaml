@@ -1,4 +1,4 @@
-name: flutter_application_2
+name: salam_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -33,18 +33,20 @@ dependencies:
   intl: ^0.18.1
   image_picker: ^1.0.4
   file_picker: ^5.3.3
+  google_fonts: ^6.2.1
+  audioplayers: 6.4.0
   
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-cupertino_icons: ^1.0.8
-iconsax: ^0.0.8
+  cupertino_icons: ^1.0.8
+  iconsax: ^0.0.8
 #image_picker: ^1.1.2
-flutter_riverpod: ^2.6.1
-dotted_line: ^3.2.3
-cached_network_image: ^3.4.1
-google_fonts: ^6.2.1
-mask_text_input_formatter: ^2.9.0
+  flutter_riverpod: ^2.6.1
+  dotted_line: ^3.2.3
+  cached_network_image: ^3.4.1
+  mask_text_input_formatter: ^2.9.0
+  shared_preferences: ^2.5.2
 
 
 
@@ -76,6 +78,51 @@ flutter:
     - assets/images/languagepic.png
     - assets/images/Verificationpic.png
     - assets/images/Thankpic.png
+    - assets/images/walking_background.png
+    - assets/images/W_activity_image.png
+    - assets/images/WW_activity_image.png
+    - assets/images/sleep_bg.png
+    - assets/images/sleeping.png
+    - assets/images/rain_icon.png
+    - assets/images/wind_icon.png
+    - assets/images/music_icon.png
+    - assets/images/mindfulness_bg_select.png
+    - assets/images/mindfulness_bg_play.png
+    - assets/images/tranquil_flow_icon.png
+    - assets/images/harmony_within_icon.png
+    - assets/images/serene_escape_icon.png
+    - assets/images/lungs_complete.png
+    - assets/images/lungs_exhale.png
+    - assets/images/lungs_inhale.png
+    - assets/images/breathing_bg.png
+    - assets/images/freedom.png
+    - assets/images/extinguisher_icon.png
+    - assets/images/fire_icon.png
+    - assets/images/streak_placeholder.png
+    - assets/images/breakfree_bg.png
+    - assets/images/activity_bg.png
+    - assets/images/breakfree_icon.png
+    - assets/images/mindful_icon.png
+    - assets/images/sleep_icon.png
+    - assets/images/walk_icon.png
+    - assets/images/breath_icon.png
+    - assets/images/mood_so_bad.png
+    - assets/images/mood_bad.png
+    - assets/images/mood_not_good.png
+    - assets/images/mood_great.png
+    - assets/images/mood_awesome.png
+    - assets/sounds/rain.mp3
+    - assets/sounds/wind.mp3
+    - assets/sounds/synth.mp3
+    - assets/sounds/rain.ogg
+    - assets/sounds/wind.ogg
+    - assets/sounds/synth.ogg
+    - assets/sounds/tranquil_flow.mp3
+    - assets/sounds/harmony_within.mp3
+    - assets/sounds/serene_escape.mp3
+
+
+
 
 
   # To add assets to your application, add an assets section, like this:
