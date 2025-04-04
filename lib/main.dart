@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // For checking track date
-import 'package:intl/intl.dart';                         // For date formatting
+import 'package:intl/intl.dart'; // For date formatting
 
 // Ensure these import paths are correct for YOUR project structure
-import 'package:salam_app/screens/activities/ActivitySelectionScreen.dart';
+// --- REMOVED ActivitySelectionScreen import if not used elsewhere ---
+// import 'package:salam_app/screens/activities/ActivitySelectionScreen.dart';
 import 'package:salam_app/screens/MoodTrackingScreen.dart';
+// --- ADDED import for the new RemindersListScreen ---
+import 'package:salam_app/screens/Reminders/remindersListScreen.dart'; // Adjust path if needed
 
 void main() {
   runApp(MyApp());
@@ -17,19 +20,20 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Salam App',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-         textTheme: TextTheme(
-             // Define text styles if needed globally
-         ),
-         iconTheme: IconThemeData(
-             // Define icon themes if needed globally
-         )
+        primarySwatch: Colors.teal, // Changed to teal to match example theme
+        // Define text styles if needed globally
+        // Define icon themes if needed globally
+        // Use teal or another color that fits the design
+        colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.teal)
+            .copyWith(secondary: Colors.amberAccent),
       ),
       initialRoute: '/', // Starting point
       routes: {
         '/': (context) => HomeScreen(),
-        '/activitySelection': (context) => ActivitySelectionScreen(),
+        // '/activitySelection': (context) => ActivitySelectionScreen(), // Keep if needed elsewhere, remove if not
         '/moodTracking': (context) => MoodTrackingScreen(),
+        // --- ADDED route for the Reminders List Screen ---
+        '/remindersList': (context) => RemindersListScreen(),
       },
     );
   }
@@ -39,25 +43,18 @@ class MyApp extends StatelessWidget {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
-  // Function to check if mood can be tracked today
+  // Function to check if mood can be tracked today (keep as is)
   Future<bool> _canTrackMoodToday() async {
+    // ... (your existing logic)
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Use a key to store the last tracked date string
       final String? lastTrackDateString = prefs.getString('lastMoodTrackDate');
-      final String todayString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-      print('Checking Mood Track Date - Last tracked: $lastTrackDateString, Today: $todayString');
-
-      if (lastTrackDateString == null) {
-        return true; // Never tracked before
-      }
-      // Allow tracking if the last tracked date is NOT the same as today's date
+      final String todayString =
+          DateFormat('yyyy-MM-dd').format(DateTime.now());
+      if (lastTrackDateString == null) return true;
       return lastTrackDateString != todayString;
     } catch (e) {
       print("Error checking mood track date: $e");
-      // Allow tracking by default if there's an error reading preferences,
-      // to avoid blocking the user unnecessarily. Consider logging this error.
       return true;
     }
   }
@@ -72,39 +69,39 @@ class HomeScreen extends StatelessWidget {
           children: [
             ElevatedButton(
               onPressed: () {
-                // Navigate to the Activity Selection Screen
-                Navigator.pushNamed(context, '/activitySelection');
+                // --- UPDATED Navigation ---
+                // Navigate to the Reminders List Screen
+                Navigator.pushNamed(
+                    context, '/remindersList'); // Use the new route name
               },
-              child: Text('Go to Activities'),
+              // --- Optional: Update Button Text ---
+              child: Text(
+                  'Go to Reminders'), // Changed text to reflect destination
             ),
             SizedBox(height: 20), // Space between buttons
             ElevatedButton(
-              onPressed: () async { // Make onPressed async to use await
-                bool canTrack = await _canTrackMoodToday(); // Check if tracking is allowed
-
-                // IMPORTANT: Check if the widget is still mounted after the await call
+              onPressed: () async {
+                // Keep mood tracking logic as is
+                bool canTrack = await _canTrackMoodToday();
                 if (!context.mounted) return;
-
                 if (canTrack) {
-                  // Navigate to the Mood Tracking Screen if allowed
                   Navigator.pushNamed(context, '/moodTracking');
                 } else {
-                  // Show a message if already tracked today
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('You have already tracked your mood today.'),
-                      backgroundColor: Colors.blueGrey, // Optional: customize snackbar
+                      content:
+                          Text('You have already tracked your mood today.'),
+                      backgroundColor: Colors.blueGrey,
                       duration: Duration(seconds: 3),
                     ),
                   );
                 }
               },
-              child: Text('Track Your Mood'), // Button for mood tracking
+              child: Text('Track Your Mood'),
             ),
           ],
         ),
       ),
-      // If you have a bottom nav bar, add it here:
       // bottomNavigationBar: BottomNavBar(), // Example
     );
   }
