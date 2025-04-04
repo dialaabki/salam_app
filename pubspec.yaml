@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0' # Updated to common range constraint based on ^3.7.2
+  sdk: ^3.7.2
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -30,30 +30,27 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # Original Dependencies (cleaned)
-  intl: ^0.18.1 # Needed for reminder feature date formatting too
-  image_picker: ^1.1.2 # Kept latest version specified
+  intl: ^0.18.1
+  image_picker: ^1.0.4
   file_picker: ^5.3.3
   video_player: ^2.8.2
   chewie: ^1.8.1
+
   google_fonts: ^6.2.1
-  audioplayers: ^6.4.0 # Changed to caret syntax for flexibility
+  audioplayers: 6.4.0
+  
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   iconsax: ^0.0.8
+  flutter_riverpod: ^2.6.1
   dotted_line: ^3.2.3
   cached_network_image: ^3.4.1
   mask_text_input_formatter: ^2.9.0
 
   shared_preferences: ^2.5.2
 
-  # State Management (Note: Both Riverpod and Provider are now listed)
-  flutter_riverpod: ^2.6.1 # Your existing state management
-  provider: ^6.1.2 # Added for the provided reminder feature code
-
-  # New Dependencies for Reminder Feature
-  uuid: ^4.4.0 # For unique reminder IDs
-  flutter_slidable: ^3.1.0 # For swipe-to-remove functionality
 
 
 dev_dependencies:
@@ -65,7 +62,7 @@ dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^4.0.0 # Updated to a more recent version, adjust if needed
+  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -77,19 +74,107 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/images/loginpic.png 
+    - assets/images/signupaspic.png 
+    - assets/images/forgotpasswordpic.png
+    - assets/images/languagepic.png
+
+    - assets/images/Verificationpic.png
+    - assets/images/Thankpic.png
+    - assets/images/addictionpic.png
+    - assets/images/adhdpic.png
+    - assets/images/anxietypic.png
+    - assets/images/aseelpic.png
+    - assets/images/badmarkpic.png
+    - assets/images/bipolarpic1.png
+    - assets/images/bipolarpic2.png
+    - assets/images/depressionpic.png
+    - assets/images/goodmarkpic.png
+    - assets/images/knowledgepic.png
+    - assets/images/larapic.png
+    - assets/images/mousapic.png
+    - assets/images/ocdpic.png
+    - assets/images/quizpic.png
+    - assets/images/resourcespic.png
+    - assets/images/rightpic.png
+    - assets/images/selfassepic1.png
+    - assets/images/selfassepic2.png
+    - assets/images/step1pic.png
+    - assets/images/step2pic.png
+    - assets/images/step3pic.png
+    - assets/images/step4pic.png
+    - assets/images/step5pic.png
+    - assets/images/step6pic.png
+    - assets/images/videopic.png
+    - assets/images/wrongpic.png
+    - assets/images/directorypic.png
+    - assets/videos/videoresource.mp4
+    - assets/images/nomentalissuepic.png
+    - assets/images/walking_background.png
+    - assets/images/W_activity_image.png
+    - assets/images/WW_activity_image.png
+    - assets/images/sleep_bg.png
+    - assets/images/sleeping.png
+    - assets/images/rain_icon.png
+    - assets/images/wind_icon.png
+    - assets/images/music_icon.png
+    - assets/images/mindfulness_bg_select.png
+    - assets/images/mindfulness_bg_play.png
+    - assets/images/tranquil_flow_icon.png
+    - assets/images/harmony_within_icon.png
+    - assets/images/serene_escape_icon.png
+    - assets/images/lungs_complete.png
+    - assets/images/lungs_exhale.png
+    - assets/images/lungs_inhale.png
+    - assets/images/breathing_bg.png
+    - assets/images/freedom.png
+    - assets/images/extinguisher_icon.png
+    - assets/images/fire_icon.png
+    - assets/images/streak_placeholder.png
+    - assets/images/breakfree_bg.png
+    - assets/images/activity_bg.png
+    - assets/images/breakfree_icon.png
+    - assets/images/mindful_icon.png
+    - assets/images/sleep_icon.png
+    - assets/images/walk_icon.png
+    - assets/images/breath_icon.png
+    - assets/images/mood_so_bad.png
+    - assets/images/mood_bad.png
+    - assets/images/mood_not_good.png
+    - assets/images/mood_great.png
+    - assets/images/mood_awesome.png
+    - assets/sounds/rain.mp3
+    - assets/sounds/wind.mp3
+    - assets/sounds/synth.mp3
+    - assets/sounds/rain.ogg
+    - assets/sounds/wind.ogg
+    - assets/sounds/synth.ogg
+    - assets/sounds/tranquil_flow.mp3
+    - assets/sounds/harmony_within.mp3
+    - assets/sounds/serene_escape.mp3
+
+
+
+
 
   # To add assets to your application, add an assets section, like this:
-  # Declaring folders includes all files within them.
-  assets:
-    - assets/images/
-    - assets/videos/
-    - assets/sounds/
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
+ 
   # fonts:
   #   - family: Schyler
   #     fonts:
