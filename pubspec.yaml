@@ -42,21 +42,13 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-cupertino_icons: ^1.0.8
-iconsax: ^0.0.8
-image_picker: ^1.1.2
-flutter_riverpod: ^2.6.1
-dotted_line: ^3.2.3
-cached_network_image: ^3.4.1
-google_fonts: ^6.2.1
-mask_text_input_formatter: ^2.9.0
   cupertino_icons: ^1.0.8
   iconsax: ^0.0.8
-#image_picker: ^1.1.2
   flutter_riverpod: ^2.6.1
   dotted_line: ^3.2.3
   cached_network_image: ^3.4.1
   mask_text_input_formatter: ^2.9.0
+
   shared_preferences: ^2.5.2
 
 
@@ -67,7 +59,7 @@ dev_dependencies:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
+  # The "flutter_lints" package below contains a set of recommended lints to
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
