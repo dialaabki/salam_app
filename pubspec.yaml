@@ -153,6 +153,14 @@ flutter:
     - assets/sounds/tranquil_flow.mp3
     - assets/sounds/harmony_within.mp3
     - assets/sounds/serene_escape.mp3
+    - assets/images/walkpic.png
+    - assets/images/breathepic.png
+    - assets/images/sleeppic.png
+    - assets/images/ritalinpic.png
+    - assets/images/manybrainspic.png
+    - assets/images/medcuppic.png
+    - assets/images/breakefreepic.png
+    - assets/images/mindfulnesspic.png
 
 
 
