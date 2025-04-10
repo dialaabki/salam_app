@@ -30,18 +30,20 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  intl: ^0.18.1
+
+  flutter_localizations: # <-- Add this section
+    sdk: flutter
+
+  intl: 0.19.0
   image_picker: ^1.0.4
   file_picker: ^5.3.3
   video_player: ^2.8.2
   chewie: ^1.8.1
+  video_player_web: ^2.0.15
+  firebase_core: 3.13.0 # <-- Use the latest version from pub.dev
 
   google_fonts: ^6.2.1
-  audioplayers: 6.4.0
-  
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  audioplayers: ^6.4.0 # Changed to caret syntax for flexibility
   cupertino_icons: ^1.0.8
   iconsax: ^0.0.8
   flutter_riverpod: ^2.6.1
@@ -50,6 +52,7 @@ dependencies:
   mask_text_input_formatter: ^2.9.0
 
   shared_preferences: ^2.5.2
+  provider: ^6.0.0
 
 
 
@@ -79,7 +82,6 @@ flutter:
     - assets/images/signupaspic.png 
     - assets/images/forgotpasswordpic.png
     - assets/images/languagepic.png
-
     - assets/images/Verificationpic.png
     - assets/images/Thankpic.png
     - assets/images/addictionpic.png
@@ -144,6 +146,23 @@ flutter:
     - assets/images/mood_not_good.png
     - assets/images/mood_great.png
     - assets/images/mood_awesome.png
+    - assets/images/bg_reminders.png
+    - assets/images/bg_add_pill.png
+    - assets/images/bg_add_activity.png
+    - assets/images/icon_medicine.png
+    - assets/images/icon_activity.png
+    - assets/images/icon_activity_default.png
+    - assets/images/icon_activity.png
+    - assets/images/icon_breakfree.png
+    - assets/images/icon_breath.png
+    - assets/images/icon_medicine_default.png
+    - assets/images/icon_medicine.png
+    - assets/images/icon_mindfulness.png
+    - assets/images/icon_ritalin.png
+    - assets/images/icon_sleep.png
+    - assets/images/icon_walk.png
+    - assets/images/mood_faces_combined.png
+    - assets/images/profile_avatar_placeholder.png
     - assets/sounds/rain.mp3
     - assets/sounds/wind.mp3
     - assets/sounds/synth.mp3
@@ -153,6 +172,7 @@ flutter:
     - assets/sounds/tranquil_flow.mp3
     - assets/sounds/harmony_within.mp3
     - assets/sounds/serene_escape.mp3
+    - assets/videos/videoresource.mp4
 
 
 

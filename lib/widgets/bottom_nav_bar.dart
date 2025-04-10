@@ -1,51 +1,41 @@
-// File: lib/widgets/bottom_nav_bar.dart
-
 import 'package:flutter/material.dart';
-import 'dart:async'; // Keep only if timer is actually used/passed
+import 'dart:async';
 
-// Define a reusable StatelessWidget for the Bottom Navigation Bar
+// *** IMPORT YOUR main.dart FILE ***
+// Adjust the path '..' if main.dart is in a different relative location
+import '../main.dart'; // Assuming main.dart is in the 'lib' folder and this widget is in 'lib/widgets'
+
 class AppBottomNavBar extends StatelessWidget {
-  // If you don't actually need to pass a timer from the screens, remove this.
   final Timer? navigationTimer;
 
-  // *** Ensure this constructor is marked as const ***
   const AppBottomNavBar({Key? key, this.navigationTimer}) : super(key: key);
 
-  // Helper function to handle navigation logic
   void _navigate(BuildContext context, String routeName) {
-    // Only try to cancel if a timer was actually passed
     navigationTimer?.cancel();
-
-    // Get current route name *inside* the method when needed
     final currentRouteName = ModalRoute.of(context)?.settings.name;
-
-    // Only push if not already on the target route
     if (currentRouteName != routeName) {
-      // Consider navigation strategy: pushNamed, pushReplacementNamed, pushNamedAndRemoveUntil
       Navigator.pushNamed(context, routeName);
     }
   }
 
-  // Helper function to navigate home
   void _navigateHome(BuildContext context) {
     navigationTimer?.cancel();
-    // Pop until the first route (usually the home screen defined as '/')
-    Navigator.popUntil(context, (route) => route.isFirst);
+    // Navigate to the route defined as home ('/') using its constant
+    // Pop until first is usually okay if '/' is always the base.
+    final currentRouteName = ModalRoute.of(context)?.settings.name;
+    if (currentRouteName != MyApp.userHomeRoute) {
+       Navigator.popUntil(context, (route) => route.settings.name == MyApp.userHomeRoute || route.isFirst);
+       // If popUntil doesn't reliably get you home (e.g., if you used pushReplacement), use:
+       // Navigator.pushNamedAndRemoveUntil(context, MyApp.userHomeRoute, (route) => false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get current route name inside build method
     final currentRouteName = ModalRoute.of(context)?.settings.name;
 
-    // Define target route names explicitly
-    const String activitySelectionRoute = '/activitySelection'; // Or '/activity' if that's your route name
-    const String remindersRoute = '/reminders';
-    const String resourcesRoute = '/resources'; // <-- Define resources route name
-    const String profileRoute = '/profile';
-
-    // Determine if on the specific activity selection screen
-    // final bool isExactlyActivitySelectionScreen = currentRouteName == activitySelectionRoute;
+    // --- Use Constants Imported from MyApp ---
+    // No need to redefine constants here
 
     // Define colors
     const Color activeColor = Colors.white;
@@ -54,35 +44,39 @@ class AppBottomNavBar extends StatelessWidget {
 
     return BottomAppBar(
       color: barBackgroundColor,
+      shape: const CircularNotchedRectangle(),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
             tooltip: 'Home',
-            icon: Icon(Icons.home, color: currentRouteName == '/' ? activeColor : inactiveColor), // Highlight if '/'
+            // Use the constant from main.dart for comparison
+            icon: Icon(Icons.home, color: currentRouteName == MyApp.userHomeRoute ? activeColor : inactiveColor),
             onPressed: () => _navigateHome(context),
           ),
           IconButton(
             tooltip: 'Reminders',
-            icon: Icon(Icons.access_time, color: currentRouteName == remindersRoute ? activeColor : inactiveColor),
-            onPressed: () => _navigate(context, remindersRoute),
+            // Use the constant from main.dart for comparison and navigation
+            icon: Icon(Icons.access_time, color: currentRouteName == MyApp.remindersRoute ? activeColor : inactiveColor),
+            onPressed: () => _navigate(context, MyApp.remindersRoute),
           ),
           IconButton(
             tooltip: 'Activity',
-            icon: Icon(Icons.checklist, color: currentRouteName == activitySelectionRoute ? activeColor : inactiveColor),
-            onPressed: () => _navigate(context, activitySelectionRoute),
+            // Use the constant from main.dart for comparison and navigation
+            icon: Icon(Icons.checklist, color: currentRouteName == MyApp.activitySelectionRoute ? activeColor : inactiveColor),
+            onPressed: () => _navigate(context, MyApp.activitySelectionRoute),
           ),
-          // --- UPDATED ICON FOR RESOURCES ---
           IconButton(
-            tooltip: 'Resources', // <-- Changed tooltip
-            icon: Icon(Icons.menu_book, color: currentRouteName == resourcesRoute ? activeColor : inactiveColor), // <-- Check against resourcesRoute
-            onPressed: () => _navigate(context, resourcesRoute), // <-- Navigate to resourcesRoute
+            tooltip: 'Resources',
+            // Use the constant from main.dart for comparison and navigation
+            icon: Icon(Icons.menu_book, color: currentRouteName == MyApp.resourcesRoute ? activeColor : inactiveColor),
+            onPressed: () => _navigate(context, MyApp.resourcesRoute),
           ),
-          // --- END OF UPDATE ---
           IconButton(
             tooltip: 'Profile',
-            icon: Icon(Icons.person, color: currentRouteName == profileRoute ? activeColor : inactiveColor),
-            onPressed: () => _navigate(context, profileRoute),
+            // Use the constant from main.dart for comparison and navigation
+            icon: Icon(Icons.person, color: currentRouteName == MyApp.userProfileRoute ? activeColor : inactiveColor),
+            onPressed: () => _navigate(context, MyApp.userProfileRoute),
           ),
         ],
       ),
