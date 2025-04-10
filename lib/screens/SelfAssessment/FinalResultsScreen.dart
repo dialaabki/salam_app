@@ -198,24 +198,24 @@ class FinalResultsScreen extends StatelessWidget {
     // Q1-13: Symptom presence (assuming 0 = Yes, 1 = No)
     int yesCountQ1to13 = answers.sublist(0, 13).where((a) => a == 0).length;
     // Q14: Symptoms happened at same time (assuming 0 = Yes, 1 = No)
-    bool criterion1Met_Symptoms = yesCountQ1to13 >= 7;
+    bool criterion1metSymptoms = yesCountQ1to13 >= 7;
     // Q14: Concurrence (assuming 0 = Yes)
-    bool criterion2Met_Concurrence = answers[13] == 0;
+    bool criterion2metConcurrence = answers[13] == 0;
     // Q15: Impairment level (assuming 0=No, 1=Minor, 2=Moderate, 3=Serious)
-    bool criterion3Met_Impairment =
+    bool criterion3metImpairment =
         answers[14] != null && answers[14]! >= 2; // Moderate or Serious problem
 
     bool isPositive =
-        criterion1Met_Symptoms &&
-        criterion2Met_Concurrence &&
-        criterion3Met_Impairment;
+        criterion1metSymptoms &&
+        criterion2metConcurrence &&
+        criterion3metImpairment;
 
     String message =
         isPositive
             ? 'This screen suggests further evaluation for Bipolar Disorder may be warranted.'
             : 'This screen does not indicate likely Bipolar Disorder based on these criteria.';
     message +=
-        "\n(Criteria: >=7 'Yes' in Q1-13 [met: $criterion1Met_Symptoms], 'Yes' in Q14 [met: $criterion2Met_Concurrence], 'Moderate' or 'Serious' problem in Q15 [met: $criterion3Met_Impairment])";
+        "\n(Criteria: >=7 'Yes' in Q1-13 [met: $criterion1metSymptoms], 'Yes' in Q14 [met: $criterion2metConcurrence], 'Moderate' or 'Serious' problem in Q15 [met: $criterion3metImpairment])";
     return {'isPositive': isPositive, 'message': message};
   }
 

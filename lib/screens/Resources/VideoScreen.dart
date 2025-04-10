@@ -8,7 +8,7 @@ class VideoScreen extends StatefulWidget {
   final ResourceItem
   resource; // Accept the resource item passed from list screen
 
-  const VideoScreen({Key? key, required this.resource}) : super(key: key);
+  const VideoScreen({super.key, required this.resource});
 
   @override
   _VideoScreenState createState() => _VideoScreenState();
@@ -80,8 +80,9 @@ class _VideoScreenState extends State<VideoScreen> {
   }
 
   void _togglePlayPause() {
-    if (!_controller.value.isInitialized)
+    if (!_controller.value.isInitialized) {
       return; // Don't allow action if not ready
+    }
 
     setState(() {
       if (_controller.value.isPlaying) {

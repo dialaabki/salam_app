@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+// Keep only if timer is potentially used by AppBottomNavBar
+
 // Import the data model
+// Assuming 'salam_app' is your package name. Adjust if necessary.
 import 'package:salam_app/screens/Resources/ResourceItem.dart';
 // Import the detail screen
 import 'package:salam_app/screens/Resources/ResourceDetailScreen.dart';
@@ -7,6 +10,11 @@ import 'package:salam_app/screens/Resources/ResourceDetailScreen.dart';
 import 'package:salam_app/screens/quiz/QuizScreen.dart'; // Adjust path if needed
 // Import the Video Screen
 import 'package:salam_app/screens/Resources/VideoScreen.dart'; // <-- Needed for navigation
+
+// --- CORRECTED: Import the reusable bottom navigation bar from its file ---
+import 'package:salam_app/widgets/bottom_nav_bar.dart'; // <-- IMPORTED WIDGET
+
+// --- End of Import ---
 
 class ResourcesListScreen extends StatefulWidget {
   const ResourcesListScreen({super.key});
@@ -34,10 +42,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
       description: 'Therapy in a Nutshell • 486K views • 4 years ago',
       imagePath: 'assets/images/videopic.png', // Ensure this image exists
       type: 'Video',
-      // --- CHANGED: Corrected videoPath ---
-      // This should be the ACTUAL path to your video asset file.
-      // Make sure this file exists and is declared in pubspec.yaml
-      videoPath: 'assets/videos/videoresource.mp4',
+      videoPath: 'assets/videos/videoresource.mp4', // Ensure this video exists
     ),
     ResourceItem(
       id: 'quiz_knowledge',
@@ -105,8 +110,11 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
     _applyFiltersAndSearch();
   }
 
-  // --- CHANGED: Updated navigation logic ---
   void _navigateToDetailScreen(ResourceItem resource) {
+    // Make sure '/resources' is the route name used when navigating TO this screen
+    // for the AppBottomNavBar highlighting to work correctly.
+    const String currentRoute = '/resources'; // Example route name
+
     if (resource.type == 'Quiz') {
       print('Navigate to Quiz Start');
       Navigator.push(
@@ -117,22 +125,17 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
         ),
       );
     } else if (resource.type == 'Video') {
-      // <-- ADDED: Check for Video type
       print('Navigate to Video Screen for: ${resource.title}');
       if (resource.videoPath != null) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            // Pass the specific resource to VideoScreen
             builder: (context) => VideoScreen(resource: resource),
-            settings: const RouteSettings(
-              name: '/videoPlayer',
-            ), // Optional route name
+            settings: const RouteSettings(name: '/videoPlayer'),
           ),
         );
       } else {
         print('Error: Video resource "${resource.title}" has no videoPath.');
-        // Optionally show a snackbar or dialog to the user
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Video not available for "${resource.title}"'),
@@ -151,7 +154,6 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
       );
     }
   }
-  // --- End of Changed Section ---
 
   // --- Build Method ---
   @override
@@ -167,7 +169,6 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
         bottom: false,
         child: Stack(
           children: [
-            // Consider making this image dynamic or removing if not needed
             Positioned(
               top: 10,
               right: 10,
@@ -175,10 +176,8 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 'assets/images/resourcespic.png', // Ensure this image exists
                 height: 80,
                 errorBuilder:
-                    (context, error, stackTrace) => const SizedBox(
-                      height: 80,
-                      width: 80,
-                    ), // Placeholder on error
+                    (context, error, stackTrace) =>
+                        const SizedBox(height: 80, width: 80), // Placeholder
               ),
             ),
             Column(
@@ -237,7 +236,6 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                                         ),
                                         onPressed: () {
                                           _searchController.clear();
-                                          // _applyFiltersAndSearch(); // Already handled by listener
                                         },
                                         tooltip: 'Clear search',
                                       )
@@ -248,7 +246,9 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      _buildFilterButton(context),
+                      _buildFilterButton(
+                        context,
+                      ), // Filter button remains part of this screen's logic
                     ],
                   ),
                 ),
@@ -261,18 +261,17 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                         top: Radius.circular(30.0),
                       ),
                     ),
-                    clipBehavior: Clip.antiAlias, // Prevents content overflow
+                    clipBehavior: Clip.antiAlias,
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(
                         20.0,
                         20.0,
                         20.0,
-                        80.0, // Padding at bottom for nav bar overlap avoidance
-                      ),
+                        20.0,
+                      ), // Adjusted padding
                       itemCount: filteredResources.length,
                       itemBuilder: (context, index) {
                         final resource = filteredResources[index];
-                        // Pass resource to card builder
                         return _buildResourceCard(context, resource, textColor);
                       },
                     ),
@@ -283,62 +282,13 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
+      // --- Use the IMPORTED AppBottomNavBar ---
+      bottomNavigationBar: const AppBottomNavBar(), // <-- USING IMPORTED WIDGET
+      // --- NO definition of AppBottomNavBar class below ---
     );
   }
 
-  // --- Custom Bottom Navigation Bar Widget ---
-  Widget _buildBottomNavBar() {
-    const Color navBarColor = Color(0xFF276181);
-    const Color iconColor = Color(0xFF5E94FF);
-    // Consider making this more dynamic based on current route if needed
-    return BottomAppBar(
-      color: navBarColor,
-      height: 60,
-      // Consider using notch shape if using FAB
-      // shape: const CircularNotchedRectangle(),
-      // notchMargin: 6.0,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.home, color: iconColor),
-            onPressed:
-                () => Navigator.popUntil(context, ModalRoute.withName('/')),
-            tooltip: 'Home',
-          ),
-          IconButton(
-            icon: const Icon(Icons.access_time, color: iconColor),
-            onPressed: () => Navigator.pushNamed(context, '/reminders'),
-            tooltip: 'Reminders',
-          ),
-          IconButton(
-            icon: const Icon(Icons.checklist, color: iconColor),
-            onPressed: () => Navigator.pushNamed(context, '/activity'),
-            tooltip: 'Activity',
-          ),
-          IconButton(
-            // Highlight this icon if on the Resources screen?
-            icon: const Icon(
-              Icons.menu_book,
-              color: Colors.white,
-            ), // Example highlight
-            onPressed: () {
-              /* Already on this screen */
-            },
-            tooltip: 'Resources',
-          ),
-          IconButton(
-            icon: const Icon(Icons.person, color: iconColor),
-            onPressed: () => Navigator.pushNamed(context, '/profile'),
-            tooltip: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Helper Widgets ---
+  // --- Helper Widgets (Filter Button and Resource Card remain) ---
   Widget _buildFilterButton(BuildContext context) {
     const String filterIconPath =
         'assets/images/icon_filter.png'; // Ensure this exists
@@ -360,7 +310,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 Icons.filter_list,
                 color: Colors.grey[700],
                 size: 24,
-              ), // Fallback icon
+              ), // Fallback
         ),
         onSelected: _selectFilter,
         itemBuilder:
@@ -370,6 +320,10 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 child: Text(
                   'All Libraries',
                   style: TextStyle(
+                    fontWeight:
+                        currentFilter == 'All'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                     color:
                         currentFilter == 'All'
                             ? Theme.of(context).primaryColor
@@ -382,6 +336,10 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 child: Text(
                   'Videos',
                   style: TextStyle(
+                    fontWeight:
+                        currentFilter == 'Video'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                     color:
                         currentFilter == 'Video'
                             ? Theme.of(context).primaryColor
@@ -394,6 +352,10 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 child: Text(
                   'Articles',
                   style: TextStyle(
+                    fontWeight:
+                        currentFilter == 'Article'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                     color:
                         currentFilter == 'Article'
                             ? Theme.of(context).primaryColor
@@ -406,6 +368,10 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                 child: Text(
                   'Educational Quiz',
                   style: TextStyle(
+                    fontWeight:
+                        currentFilter == 'Quiz'
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                     color:
                         currentFilter == 'Quiz'
                             ? Theme.of(context).primaryColor
@@ -415,7 +381,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
               ),
             ],
         tooltip: "Filter Resources",
-        offset: const Offset(0, 55), // Adjust offset slightly below button
+        offset: const Offset(0, 55),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: EdgeInsets.zero,
       ),
@@ -433,21 +399,21 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
       margin: const EdgeInsets.only(bottom: 16.0),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        // Use the updated navigation function
         onTap: () => _navigateToDetailScreen(resource),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start, // Align items top
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Center items vertically
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10.0),
                 child: Image.asset(
-                  resource.imagePath, // Use path from resource
+                  resource.imagePath,
                   height: 75,
                   width: 75,
                   fit: BoxFit.cover,
-                  errorBuilder: // Placeholder for missing images
+                  errorBuilder:
                       (context, error, stackTrace) => Container(
                         height: 75,
                         width: 75,
@@ -456,7 +422,7 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                           borderRadius: BorderRadius.circular(10.0),
                         ),
                         child: Icon(
-                          // Indicate type if image fails?
+                          // Indicate type on error
                           resource.type == 'Video'
                               ? Icons.video_library_outlined
                               : resource.type == 'Article'
@@ -474,12 +440,8 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Vertically center text
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      height: (75 - 50) / 2,
-                    ), // Adjust spacing to roughly center text block vertically
                     Text(
                       resource.title,
                       style: TextStyle(
@@ -500,7 +462,6 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: (75 - 50) / 2), // Adjust spacing
                   ],
                 ),
               ),
@@ -511,3 +472,5 @@ class _ResourcesListScreenState extends State<ResourcesListScreen> {
     );
   }
 } // End of _ResourcesListScreenState
+
+// NO AppBottomNavBar class definition here

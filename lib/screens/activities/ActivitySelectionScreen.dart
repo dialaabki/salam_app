@@ -15,19 +15,43 @@ import 'WalkingActivityScreen.dart';
 import 'BreakFreeScreen.dart';
 // --- End Imports ---
 
-
 class ActivitySelectionScreen extends StatelessWidget {
   static const routeName = '/activitySelection'; // Good practice route name
 
   final List<Map<String, dynamic>> activities = [
-    {'label': 'Sleep','icon': 'assets/images/sleep_icon.png','target': SleepActivityScreen(),},
-    {'label': 'Breath','icon': 'assets/images/breath_icon.png','target': BreathingIntroScreen(),},
-    {'label': 'Mindful','icon': 'assets/images/mindful_icon.png','target': MindfulnessActivityScreen(),},
-    {'label': 'Walk','icon': 'assets/images/walk_icon.png','target': WalkingActivityScreen(), },
-    {'label': 'BreakFree','icon': 'assets/images/breakfree_icon.png','target': BreakFreeScreen(),},
+    {
+      'label': 'Sleep',
+      'icon': 'assets/images/sleep_icon.png',
+      'target': SleepActivityScreen(),
+    },
+    {
+      'label': 'Breath',
+      'icon': 'assets/images/breath_icon.png',
+      'target': BreathingIntroScreen(),
+    },
+    {
+      'label': 'Mindful',
+      'icon': 'assets/images/mindful_icon.png',
+      'target': MindfulnessActivityScreen(),
+    },
+    {
+      'label': 'Walk',
+      'icon': 'assets/images/walk_icon.png',
+      'target': WalkingActivityScreen(),
+    },
+    {
+      'label': 'BreakFree',
+      'icon': 'assets/images/breakfree_icon.png',
+      'target': BreakFreeScreen(),
+    },
   ];
 
-  Widget _buildActivityItem(BuildContext context, Map<String, dynamic> activityData) {
+  const ActivitySelectionScreen({super.key});
+
+  Widget _buildActivityItem(
+    BuildContext context,
+    Map<String, dynamic> activityData,
+  ) {
     final Color buttonBgColor = Color(0xFF6B91A8);
     final Color textColor = Color(0xFF1E4B5F);
 
@@ -35,7 +59,9 @@ class ActivitySelectionScreen extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => activityData['target'] as Widget),
+          MaterialPageRoute(
+            builder: (context) => activityData['target'] as Widget,
+          ),
         );
       },
       child: Container(
@@ -58,9 +84,12 @@ class ActivitySelectionScreen extends StatelessWidget {
             Image.asset(
               activityData['icon'] as String,
               height: 60,
-              errorBuilder: (context, error, stackTrace) => Icon(
-                Icons.error_outline, size: 60, color: Colors.white.withOpacity(0.5),
-              ),
+              errorBuilder:
+                  (context, error, stackTrace) => Icon(
+                    Icons.error_outline,
+                    size: 60,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
             ),
             SizedBox(height: 10),
             Text(
@@ -77,7 +106,6 @@ class ActivitySelectionScreen extends StatelessWidget {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -110,50 +138,64 @@ class ActivitySelectionScreen extends StatelessWidget {
                       ),
                     ),
                     child: SingleChildScrollView(
-                       padding: const EdgeInsets.symmetric(vertical: 30.0, horizontal: 20.0),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(
-                             'Activities',
-                             style: TextStyle(
-                               fontSize: 28,
-                               fontWeight: FontWeight.bold,
-                               color: primaryTextColor,
-                             ),
-                           ),
-                           SizedBox(height: 8),
-                           Text(
-                             'Choose your activity',
-                             style: TextStyle(
-                               fontSize: 18,
-                               color: secondaryTextColor,
-                               fontWeight: FontWeight.w500,
-                             ),
-                           ),
-                           SizedBox(height: 30),
-                           Wrap(
-                             spacing: 20.0,
-                             runSpacing: 20.0,
-                             alignment: WrapAlignment.start,
-                             children: activities.map((activityData) {
-                               // Calculate width dynamically
-                               double horizontalPadding = 40.0; // Approx total horizontal padding (20*2)
-                               double spacingBetweenItems = 20.0;
-                               int itemsPerRow = 2; // Aim for 2 items per row
-                               double itemWidth = (MediaQuery.of(context).size.width - horizontalPadding - spacingBetweenItems * (itemsPerRow - 1)) / itemsPerRow;
-                               // Add a minimum width constraint if needed
-                               itemWidth = itemWidth < 100 ? 100 : itemWidth;
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 30.0,
+                        horizontal: 20.0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Activities',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: primaryTextColor,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Choose your activity',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: secondaryTextColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 30),
+                          Wrap(
+                            spacing: 20.0,
+                            runSpacing: 20.0,
+                            alignment: WrapAlignment.start,
+                            children:
+                                activities.map((activityData) {
+                                  // Calculate width dynamically
+                                  double horizontalPadding =
+                                      40.0; // Approx total horizontal padding (20*2)
+                                  double spacingBetweenItems = 20.0;
+                                  int itemsPerRow =
+                                      2; // Aim for 2 items per row
+                                  double itemWidth =
+                                      (MediaQuery.of(context).size.width -
+                                          horizontalPadding -
+                                          spacingBetweenItems *
+                                              (itemsPerRow - 1)) /
+                                      itemsPerRow;
+                                  // Add a minimum width constraint if needed
+                                  itemWidth = itemWidth < 100 ? 100 : itemWidth;
 
-                               return SizedBox(
-                                 width: itemWidth,
-                                 child: _buildActivityItem(context, activityData),
-                               );
-                             }).toList(),
-                           ),
-                           SizedBox(height: 20),
-                         ],
-                       ),
+                                  return SizedBox(
+                                    width: itemWidth,
+                                    child: _buildActivityItem(
+                                      context,
+                                      activityData,
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                          SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   ),
                 ),

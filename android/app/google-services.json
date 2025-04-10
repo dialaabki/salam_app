@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "679592503909",
+    "project_id": "salamapp-bb95c",
+    "storage_bucket": "salamapp-bb95c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:679592503909:android:d5b36d4e358ef12113348c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCd2zok7imoifCJjk6ZxQcPARiiwuWcZ28"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

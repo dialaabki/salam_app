@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
-import 'dart:ui'; // For ImageFilter (though not strictly needed if removing blur/gradient)
+import 'dart:ui'; // For potential future use with ImageFilter, etc.
 
-// --- Colors (Keep as defined previously) ---
-const Color kPrimaryTeal = Color(0xFF5C9DAD); // Main teal color from image
+// --- Color Constants ---
+const Color kPrimaryTeal = Color(0xFF5C9DAD);
 const Color kHeaderBlueTint = Color(
   0xFF8EB5C0,
-); // Adjusted approximate background tint of the header image
-const Color kDarkTeal = Color(0xFF3E6A7A); // Bottom nav bar color
+); // Tint similar to the original image header
+const Color kDarkTeal = Color(0xFF3E6A7A);
 const Color kGreyBackground = Color(0xFFE0E0E0);
-const Color kLightBlueGrey = Color(0xFFE3EDF3); // Reminder item background
+const Color kLightBlueGrey = Color(0xFFE3EDF3);
 const Color kRedRemove = Color(0xFFFF5C5C);
 const Color kWhite = Colors.white;
 const Color kGreyText = Colors.grey;
 const Color kDarkGreyText = Color(0xFF555555);
-const Color kTitleColor = Color(
-  0xFF4A7C89,
-); // Darker teal for title text on white background
+const Color kTitleColor = Color(0xFF4A7C89); // For title on white background
 
-// --- Reminder Model (Keep as is) ---
+// --- Reminder Data Model ---
 class Reminder {
   final String id;
   final String iconPath;
@@ -38,17 +36,18 @@ class Reminder {
   });
 }
 
+// --- Screen Widget ---
 class RemindersListScreen extends StatefulWidget {
-  const RemindersListScreen({Key? key}) : super(key: key);
+  const RemindersListScreen({super.key});
 
   @override
   _RemindersListScreenState createState() => _RemindersListScreenState();
 }
 
 class _RemindersListScreenState extends State<RemindersListScreen> {
-  String _selectedDateKey = "Mon13";
+  String _selectedDateKey = "Mon13"; // Default selected date
 
-  // --- Static Reminder Data (Keep as is) ---
+  // --- Local Reminder Data ---
   final List<Reminder> _reminders = [
     Reminder(
       id: "rem1",
@@ -96,9 +95,8 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
     ),
   ];
 
-  // --- State Management Functions (Keep as is) ---
+  // --- State Management Methods ---
   void _toggleReminderCompletion(String id) {
-    /* ... existing code ... */
     int index = -1;
     setState(() {
       index = _reminders.indexWhere((r) => r.id == id);
@@ -114,7 +112,6 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
   }
 
   void _removeReminder(String id) {
-    /* ... existing code ... */
     String removedTitle = '';
     setState(() {
       final index = _reminders.indexWhere((r) => r.id == id);
@@ -135,13 +132,12 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
   }
 
   void _addReminder() {
-    /* ... existing code ... */
     setState(() {
       final newId = 'rem${DateTime.now().millisecondsSinceEpoch}';
       _reminders.add(
         Reminder(
           id: newId,
-          iconPath: 'assets/images/medcuppic.png',
+          iconPath: 'assets/images/medcuppic.png', // Example icon for new items
           title: 'New Task ${(_reminders.length + 1) - 5}',
           details: 'Just added',
           time: TimeOfDay.now().format(context),
@@ -166,32 +162,32 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
-    final double headerImageHeight =
-        screenHeight * 0.25; // Define header height
+    // Adjust header height as needed based on your 'backgroundpic.png'
+    final double headerImageHeight = screenHeight * 0.25;
 
     return Scaffold(
-      backgroundColor: kWhite, // White background for the main content area
+      backgroundColor: kWhite, // Main background for content area
       body: Stack(
         children: [
-          // 1. Background Header Image (positioned, no overlay needed)
+          // 1. Background Header Image
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
               height: headerImageHeight,
-              color:
-                  kHeaderBlueTint, // Background color in case image fails/is transparent
+              // Use a background color matching the image's tone as fallback
+              color: kHeaderBlueTint,
               child: Image.asset(
-                'assets/images/manybrainspic.png',
-                fit: BoxFit.cover, // Cover the area
-                alignment:
-                    Alignment.center, // Center the image within the container
+                // *** Use the specified background image path ***
+                'assets/images/backgroundpic.png',
+                // **********************************************
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
                 errorBuilder: (context, error, stackTrace) {
                   print("Error loading header image: $error");
-                  // Fallback: show a colored container or placeholder icon
                   return Container(
-                    color: kHeaderBlueTint,
+                    color: kHeaderBlueTint, // Fallback color
                     child: Center(
                       child: Icon(
                         Icons.image,
@@ -205,39 +201,28 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
             ),
           ),
 
-          // 2. Main Scrollable Content Area starting BELOW the header image
-          // Use Padding to push the CustomScrollView down
+          // 2. Scrollable Content Area starting BELOW the header
           Padding(
-            padding: EdgeInsets.only(
-              top: headerImageHeight,
-            ), // Start content below image
+            padding: EdgeInsets.only(top: headerImageHeight), // Offset content
             child: CustomScrollView(
               slivers: <Widget>[
-                // --- "Reminders" Title (Now part of scrollable content) ---
+                // "Reminders" Title
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      20.0,
-                      25.0,
-                      20.0,
-                      15.0,
-                    ), // Adjust top padding as needed
+                    padding: const EdgeInsets.fromLTRB(20.0, 25.0, 20.0, 15.0),
                     child: Text(
                       'Reminders',
                       style: TextStyle(
-                        fontFamily: 'Serif', // Use a serif font if available
+                        fontFamily: 'Serif',
                         fontSize: 30,
-                        fontWeight:
-                            FontWeight
-                                .w600, // Slightly less bold than full bold
-                        color:
-                            kTitleColor, // Darker teal/blue title on white background
+                        fontWeight: FontWeight.w600,
+                        color: kTitleColor,
                       ),
                     ),
                   ),
                 ),
 
-                // --- Date Selector ---
+                // Date Selector
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
@@ -259,15 +244,10 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                   ),
                 ),
 
-                // --- "Today" + Add Button ---
+                // "Today" + Add Button
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      20.0,
-                      15.0,
-                      20.0,
-                      15.0,
-                    ), // Adjusted padding
+                    padding: const EdgeInsets.fromLTRB(20.0, 15.0, 20.0, 15.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -304,64 +284,62 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                   ),
                 ),
 
-                // --- Reminders List (Keep logic as is) ---
-                if (_reminders.isEmpty)
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline,
-                            size: 60,
-                            color: kGreyText.withOpacity(0.5),
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'No reminders!',
-                            style: TextStyle(color: kGreyText),
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            'Tap + to add one.',
-                            style: TextStyle(color: kGreyText),
-                          ),
-                        ],
+                // Reminders List or Empty State
+                _reminders.isEmpty
+                    ? SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline,
+                              size: 60,
+                              color: kGreyText.withOpacity(0.5),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'No reminders!',
+                              style: TextStyle(color: kGreyText),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Tap + to add one.',
+                              style: TextStyle(color: kGreyText),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                    : SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final reminder = _reminders[index];
+                          if (reminder.showRemoveAction) {
+                            return Dismissible(
+                              key: Key(reminder.id),
+                              direction: DismissDirection.endToStart,
+                              onDismissed:
+                                  (direction) => _removeReminder(reminder.id),
+                              background: _buildDismissibleBackground(),
+                              child: _buildReminderItem(reminder),
+                            );
+                          } else {
+                            return _buildReminderItem(reminder);
+                          }
+                        }, childCount: _reminders.length),
                       ),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final reminder = _reminders[index];
-                        if (reminder.showRemoveAction) {
-                          return Dismissible(
-                            key: Key(reminder.id),
-                            direction: DismissDirection.endToStart,
-                            onDismissed:
-                                (direction) => _removeReminder(reminder.id),
-                            background: _buildDismissibleBackground(),
-                            child: _buildReminderItem(reminder),
-                          );
-                        } else {
-                          return _buildReminderItem(reminder);
-                        }
-                      }, childCount: _reminders.length),
-                    ),
-                  ),
 
-                // Bottom padding
+                // Bottom Padding inside scroll view
                 SliverPadding(padding: EdgeInsets.only(bottom: 90)),
               ],
             ),
           ),
         ],
       ),
-      // Bottom Navigation Bar (Keep as is)
+      // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
-        /* ... existing code ... */
         currentIndex: 1,
         type: BottomNavigationBarType.fixed,
         backgroundColor: kDarkTeal,
@@ -400,14 +378,15 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
           if (index == 0 && ModalRoute.of(context)?.settings.name != '/') {
             Navigator.popUntil(context, ModalRoute.withName('/'));
           }
+          // Add navigation for other tabs if needed
+          // else if (index == 2) { Navigator.pushNamed(context, '/tasks'); } // Example
         },
       ),
     );
   }
 
-  // --- Helper Widgets (Keep as is) ---
+  // --- Helper Widgets ---
   Widget _buildDismissibleBackground() {
-    /* ... existing code ... */
     return Container(
       decoration: BoxDecoration(
         color: kRedRemove,
@@ -440,7 +419,6 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
     String key,
     double screenWidth,
   ) {
-    /* ... existing code ... */
     bool isSelected = _selectedDateKey == key;
     return GestureDetector(
       onTap: () {
@@ -448,6 +426,7 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
           _selectedDateKey = key;
         });
         print("Selected Date: $key");
+        // Add filtering logic here if dates should affect the displayed reminders
       },
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -496,7 +475,6 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
   }
 
   Widget _buildReminderItem(Reminder reminder) {
-    /* ... existing code ... */
     return Container(
       margin: EdgeInsets.symmetric(vertical: 6.0),
       decoration: BoxDecoration(
@@ -516,6 +494,8 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
+            // Consider adding an onTap here to navigate to a detail screen if needed
+            // onTap: () => Navigator.pushNamed(context, '/reminderDetail', arguments: reminder.id),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Row(

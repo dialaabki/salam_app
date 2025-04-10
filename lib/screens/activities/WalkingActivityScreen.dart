@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/bottom_nav_bar.dart'; // Adjust path if needed
 
 class WalkingActivityScreen extends StatefulWidget {
-  const WalkingActivityScreen({Key? key}) : super(key: key); // Use Key?
+  const WalkingActivityScreen({super.key}); // Use Key?
 
   @override
   State<WalkingActivityScreen> createState() => _WalkingActivityScreenState();
@@ -61,16 +61,24 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
 
   Widget _buildBody() {
     switch (_screenState) {
-      case 1: return _buildTimerScreen();
-      case 2: return _buildCompletionScreen();
-      case 0: default: return _buildDurationSelectionScreen();
+      case 1:
+        return _buildTimerScreen();
+      case 2:
+        return _buildCompletionScreen();
+      case 0:
+      default:
+        return _buildDurationSelectionScreen();
     }
   }
 
   Color _getAppBarIconColor() {
-     switch (_screenState) {
-      case 1: case 2: return const Color(0xFF5588A4); // Timer/Completion screens
-      case 0: default: return Colors.white; // Selection screen (with image bg)
+    switch (_screenState) {
+      case 1:
+      case 2:
+        return const Color(0xFF5588A4); // Timer/Completion screens
+      case 0:
+      default:
+        return Colors.white; // Selection screen (with image bg)
     }
   }
 
@@ -88,7 +96,7 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
       } else {
         // If on Duration Selection, pop the entire screen
         if (Navigator.canPop(context)) {
-           Navigator.pop(context);
+          Navigator.pop(context);
         }
       }
     });
@@ -102,14 +110,19 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
         backgroundColor: Colors.transparent, // Make app bar transparent
         elevation: 0, // Remove shadow
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: _getAppBarIconColor()), // Consistent back icon
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: _getAppBarIconColor(),
+          ), // Consistent back icon
           tooltip: 'Back',
           onPressed: _handleBackButton, // Use the back handler logic
         ),
       ),
       body: _buildBody(), // Builds content based on _screenState
       // --- FIXED Bottom Nav Bar Call ---
-      bottomNavigationBar: AppBottomNavBar(navigationTimer: _navTimer), // Use external widget
+      bottomNavigationBar: AppBottomNavBar(
+        navigationTimer: _navTimer,
+      ), // Use external widget
       // --- END FIX ---
     );
   }
@@ -119,11 +132,14 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: AssetImage('assets/images/walking_background.png'), // Ensure path is correct
+          image: AssetImage(
+            'assets/images/walking_background.png',
+          ), // Ensure path is correct
           fit: BoxFit.cover,
         ),
       ),
-      child: SafeArea( // Add SafeArea here for content
+      child: SafeArea(
+        // Add SafeArea here for content
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -139,25 +155,23 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
               const SizedBox(height: 10),
               const Text(
                 'Every step you take is progress!',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF5588A4),
-                ),
+                style: TextStyle(fontSize: 16, color: Color(0xFF5588A4)),
               ),
               const SizedBox(height: 20),
               const Text(
                 'Walk Duration',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Color(0xFF5588A4),
-                ),
+                style: TextStyle(fontSize: 20, color: Color(0xFF5588A4)),
               ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.remove, color: Color(0xFF5588A4), size: 30),
+                    icon: const Icon(
+                      Icons.remove,
+                      color: Color(0xFF5588A4),
+                      size: 30,
+                    ),
                     onPressed: () {
                       if (!mounted) return;
                       setState(() {
@@ -169,12 +183,20 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
                   ),
                   Text(
                     '$_selectedDuration min',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF5588A4)),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF5588A4),
+                    ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.add, color: Color(0xFF5588A4), size: 30),
+                    icon: const Icon(
+                      Icons.add,
+                      color: Color(0xFF5588A4),
+                      size: 30,
+                    ),
                     onPressed: () {
-                       if (!mounted) return;
+                      if (!mounted) return;
                       setState(() {
                         if (_selectedDuration < 120) {
                           _selectedDuration += 5;
@@ -187,8 +209,13 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
               const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: _startTimer,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5588A4)),
-                child: const Text('Start', style: TextStyle(fontSize: 20, color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5588A4),
+                ),
+                child: const Text(
+                  'Start',
+                  style: TextStyle(fontSize: 20, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -201,7 +228,8 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
   Widget _buildTimerScreen() {
     return Container(
       color: Colors.white,
-      child: SafeArea( // Add SafeArea here
+      child: SafeArea(
+        // Add SafeArea here
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -236,13 +264,19 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                Expanded( // Allow image to take remaining space
+                Expanded(
+                  // Allow image to take remaining space
                   child: Image.asset(
                     'assets/images/W_activity_image.png', // Ensure path is correct
-                     fit: BoxFit.contain, // Contain ensures whole image fits
-                     errorBuilder: (context, error, stackTrace) {
-                       return const Center(child: Text('Error loading image', style: TextStyle(color: Colors.red)));
-                     },
+                    fit: BoxFit.contain, // Contain ensures whole image fits
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Text(
+                          'Error loading image',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 20), // Space below image
@@ -254,21 +288,25 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
     );
   }
 
-
   // Screen 3: Completion Screen (_screenState == 2)
   Widget _buildCompletionScreen() {
     return Container(
       color: Colors.white,
-      child: SafeArea( // Add SafeArea here
+      child: SafeArea(
+        // Add SafeArea here
         child: Center(
           child: Padding(
-             padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
                   'Well done!',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF5588A4)),
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF5588A4),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 const Text(
@@ -277,13 +315,19 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
                   style: TextStyle(fontSize: 20, color: Color(0xFF5588A4)),
                 ),
                 const SizedBox(height: 20),
-                 Expanded( // Allow image to take remaining space
+                Expanded(
+                  // Allow image to take remaining space
                   child: Image.asset(
                     'assets/images/WW_activity_image.png', // Ensure path is correct
-                     fit: BoxFit.contain, // Use contain to ensure visibility
-                     errorBuilder: (context, error, stackTrace) {
-                       return const Center(child: Text('Error loading image', style: TextStyle(color: Colors.red)));
-                     },
+                    fit: BoxFit.contain, // Use contain to ensure visibility
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Text(
+                          'Error loading image',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -296,10 +340,15 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
                       // _selectedDuration = 30; // Optionally reset duration
                     });
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5588A4)),
-                  child: const Text('Finish', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5588A4),
+                  ),
+                  child: const Text(
+                    'Finish',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
                 ),
-                 const SizedBox(height: 20), // Space below button
+                const SizedBox(height: 20), // Space below button
               ],
             ),
           ),
@@ -309,5 +358,4 @@ class _WalkingActivityScreenState extends State<WalkingActivityScreen> {
   }
 
   // Removed internal _buildBottomNavBar method
-
 }
