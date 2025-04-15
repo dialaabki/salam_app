@@ -31,14 +31,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_localizations: # <-- Add this section
+  flutter_localizations:
     sdk: flutter
-
-  intl: 0.19.0
+    
+  intl: ^0.19.0
   image_picker: ^1.0.4
   file_picker: ^5.3.3
   video_player: ^2.8.2
   chewie: ^1.8.1
+  uuid: ^4.3.3 # Use the latest version
+  collection: ^1.18.0
   video_player_web: ^2.0.15
   firebase_core: 3.13.0 # <-- Use the latest version from pub.dev
 
@@ -172,6 +174,21 @@ flutter:
     - assets/sounds/tranquil_flow.mp3
     - assets/sounds/harmony_within.mp3
     - assets/sounds/serene_escape.mp3
+    - assets/images/walkpic.png
+    - assets/images/breathepic.png
+    - assets/images/sleeppic.png
+    - assets/images/ritalinpic.png
+    - assets/images/manybrainspic.png
+    - assets/images/medcuppic.png
+    - assets/images/breakefreepic.png
+    - assets/images/mindfulnesspic.png
+    - assets/images/femalepatientpic.png
+    - assets/images/malepatientpic.png
+    - assets/images/doctorpic.png
+    - assets/images/chartpic.png
+    - assets/images/patientmenupic.png
+    - assets/images/colrdprogresspic.png
+    - assets/images/numberedprogresspic.png
     - assets/videos/videoresource.mp4
 
 

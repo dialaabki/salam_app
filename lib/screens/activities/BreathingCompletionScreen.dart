@@ -12,7 +12,7 @@ class BreathingCompletionScreen extends StatelessWidget {
   // Optional: Add static const routeName = '/breathingCompletion';
 
   // Add const constructor
-  const BreathingCompletionScreen({Key? key}) : super(key: key);
+  const BreathingCompletionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +32,17 @@ class BreathingCompletionScreen extends StatelessWidget {
           ), // Add trailing comma
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 30.0,
+                vertical: 20.0,
+              ),
               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                   Spacer(flex: 2), // Space above content - Add trailing comma
-                  Text( // Completion message
+                  Spacer(flex: 2), // Space above content - Add trailing comma
+                  Text(
+                    // Completion message
                     'Breathe in peace,\nbreathe out stress.\nYou\'re doing amazing!',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -48,13 +52,19 @@ class BreathingCompletionScreen extends StatelessWidget {
                       height: 1.5, // Line spacing
                     ), // Add trailing comma
                   ), // Add trailing comma
-                  SizedBox(height: 40), // Space before image - Add trailing comma
-                  Image.asset( // Completion image
+                  SizedBox(
+                    height: 40,
+                  ), // Space before image - Add trailing comma
+                  Image.asset(
+                    // Completion image
                     'assets/images/lungs_complete.png',
-                    height: MediaQuery.of(context).size.height * 0.25, // Adjust size
+                    height:
+                        MediaQuery.of(context).size.height *
+                        0.25, // Adjust size
                   ), // Add trailing comma
                   Spacer(flex: 3), // Push button down - Add trailing comma
-                  ElevatedButton( // Finish button
+                  ElevatedButton(
+                    // Finish button
                     onPressed: () {
                       // Navigate back to the very first screen (e.g., home)
                       Navigator.popUntil(context, (route) => route.isFirst);
@@ -63,27 +73,37 @@ class BreathingCompletionScreen extends StatelessWidget {
                     }, // Add trailing comma
                     style: ElevatedButton.styleFrom(
                       backgroundColor: finishButtonColor,
-                      padding: EdgeInsets.symmetric(horizontal: 90, vertical: 18),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 90,
+                        vertical: 18,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30), // Add trailing comma
+                        borderRadius: BorderRadius.circular(
+                          30,
+                        ), // Add trailing comma
                       ), // Add trailing comma
                     ), // Add trailing comma
                     child: Text(
                       'Finish',
-                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold), // Add trailing comma
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ), // Add trailing comma
                     ), // Add trailing comma
                   ), // Add trailing comma
-                   Spacer(flex: 1), // Space below button - Add trailing comma
+                  Spacer(flex: 1), // Space below button - Add trailing comma
                 ], // Add trailing comma
               ), // Add trailing comma
             ), // Add trailing comma
           ), // Add trailing comma
-
           // --- ADDED Back Button ---
           // This back button provides an alternative way to exit besides "Finish"
           // It likely goes back to the previous screen (which SHOULD be the activity selection screen if that's how you navigated here)
           Positioned(
-            top: MediaQuery.of(context).padding.top + 5, // Position below status bar
+            top:
+                MediaQuery.of(context).padding.top +
+                5, // Position below status bar
             left: 10,
             child: IconButton(
               icon: Icon(
@@ -104,8 +124,8 @@ class BreathingCompletionScreen extends StatelessWidget {
               }, // Add trailing comma
             ), // Add trailing comma
           ), // Add trailing comma
-          // --- END Back Button ---
 
+          // --- END Back Button ---
         ], // Add trailing comma
       ), // Add trailing comma
       // --- FIXED Bottom Nav Bar Call ---

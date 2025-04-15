@@ -15,18 +15,39 @@ import 'WalkingActivityScreen.dart';
 import 'BreakFreeScreen.dart';
 // --- End Imports ---
 
-
 class ActivitySelectionScreen extends StatelessWidget {
   static const routeName = '/activitySelection';
 
   // Define activity data (Keep as is)
   final List<Map<String, dynamic>> activities = [
-    {'label': 'Sleep','icon': 'assets/images/sleep_icon.png','target': SleepActivityScreen(),},
-    {'label': 'Breath','icon': 'assets/images/breath_icon.png','target': BreathingIntroScreen(),},
-    {'label': 'Mindful','icon': 'assets/images/mindful_icon.png','target': MindfulnessActivityScreen(),},
-    {'label': 'Walk','icon': 'assets/images/walk_icon.png','target': WalkingActivityScreen(), },
-    {'label': 'BreakFree','icon': 'assets/images/breakfree_icon.png','target': BreakFreeScreen(),},
+    {
+      'label': 'Sleep',
+      'icon': 'assets/images/sleep_icon.png',
+      'target': SleepActivityScreen(),
+    },
+    {
+      'label': 'Breath',
+      'icon': 'assets/images/breath_icon.png',
+      'target': BreathingIntroScreen(),
+    },
+    {
+      'label': 'Mindful',
+      'icon': 'assets/images/mindful_icon.png',
+      'target': MindfulnessActivityScreen(),
+    },
+    {
+      'label': 'Walk',
+      'icon': 'assets/images/walk_icon.png',
+      'target': WalkingActivityScreen(),
+    },
+    {
+      'label': 'BreakFree',
+      'icon': 'assets/images/breakfree_icon.png',
+      'target': BreakFreeScreen(),
+    },
   ];
+
+  ActivitySelectionScreen({super.key});
 
   // --- Helper to build Activity Item (Theme Aware) ---
   Widget _buildActivityItem(BuildContext context, ThemeData theme, Map<String, dynamic> activityData) { // Accept theme
@@ -42,7 +63,9 @@ class ActivitySelectionScreen extends StatelessWidget {
         // Ensure target screens are theme aware when navigating
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => activityData['target'] as Widget),
+          MaterialPageRoute(
+            builder: (context) => activityData['target'] as Widget,
+          ),
         );
       },
       child: Container(
@@ -85,7 +108,6 @@ class ActivitySelectionScreen extends StatelessWidget {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +209,7 @@ class ActivitySelectionScreen extends StatelessWidget {
         ],
       ),
       // Use your actual AppBottomNavBar (Ensure it's theme aware)
-      bottomNavigationBar: const AppBottomNavBar(),
+      bottomNavigationBar: AppBottomNavBar(),
     );
   }
 }

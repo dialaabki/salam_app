@@ -10,6 +10,8 @@ import '../../widgets/bottom_nav_bar.dart';
 enum StreakStatus { yes, no, empty }
 
 class BreakFreeScreen extends StatefulWidget {
+  const BreakFreeScreen({super.key});
+
   // static const routeName = '/breakFree'; // Optional
 
   @override
@@ -58,34 +60,34 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
 
       String savedWeekData = prefs.getString(_weekDataKey) ?? '';
       if (savedWeekData.isNotEmpty) {
-         List<String> items = savedWeekData.split(',');
-         weekDisplayData = items.map((item) {
-           try {
-             int index = int.parse(item);
-             if (index >= 0 && index < StreakStatus.values.length) {
-                return StreakStatus.values[index];
-             }
-             return StreakStatus.empty;
-           } catch (e) {
-             print("Error parsing week data item: $item, Error: $e");
-             return StreakStatus.empty;
-           }
-         }).toList();
-         if (weekDisplayData.length > 7) {
-            weekDisplayData = weekDisplayData.sublist(weekDisplayData.length - 7);
-         }
+        List<String> items = savedWeekData.split(',');
+        weekDisplayData =
+            items.map((item) {
+              try {
+                int index = int.parse(item);
+                if (index >= 0 && index < StreakStatus.values.length) {
+                  return StreakStatus.values[index];
+                }
+                return StreakStatus.empty;
+              } catch (e) {
+                print("Error parsing week data item: $item, Error: $e");
+                return StreakStatus.empty;
+              }
+            }).toList();
+        if (weekDisplayData.length > 7) {
+          weekDisplayData = weekDisplayData.sublist(weekDisplayData.length - 7);
+        }
       } else {
-         weekDisplayData = [];
+        weekDisplayData = [];
       }
 
       _checkIfAnsweredToday();
-
     } catch (e) {
-       print("Error loading data: $e");
-       weekDisplayData = [];
-       totalStreak = 0;
-       lastAnswerDate = null;
-       answeredToday = false;
+      print("Error loading data: $e");
+      weekDisplayData = [];
+      totalStreak = 0;
+      lastAnswerDate = null;
+      answeredToday = false;
     } finally {
       if (mounted) {
         setState(() {
@@ -102,13 +104,17 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
       if (lastAnswerDate != null) {
         await prefs.setString(_lastDateKey, lastAnswerDate!.toIso8601String());
       } else {
-         await prefs.remove(_lastDateKey);
+        await prefs.remove(_lastDateKey);
       }
-      String weekDataString = weekDisplayData.map((status) => status.index.toString()).join(',');
+      String weekDataString = weekDisplayData
+          .map((status) => status.index.toString())
+          .join(',');
       await prefs.setString(_weekDataKey, weekDataString);
-      print("Data Saved: Streak=$totalStreak, LastDate=$lastAnswerDate, WeekData=$weekDataString");
+      print(
+        "Data Saved: Streak=$totalStreak, LastDate=$lastAnswerDate, WeekData=$weekDataString",
+      );
     } catch (e) {
-       print("Error saving data: $e");
+      print("Error saving data: $e");
     }
   }
 
@@ -118,9 +124,10 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
       return;
     }
     final now = DateTime.now();
-    answeredToday = lastAnswerDate!.year == now.year &&
-                    lastAnswerDate!.month == now.month &&
-                    lastAnswerDate!.day == now.day;
+    answeredToday =
+        lastAnswerDate!.year == now.year &&
+        lastAnswerDate!.month == now.month &&
+        lastAnswerDate!.day == now.day;
   }
 
   Future<void> _handleAnswer(bool feltInControl) async {
@@ -155,42 +162,52 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
       children: List.generate(7, (index) {
         Widget iconWidget;
         if (index < weekDisplayData.length) {
-           StreakStatus status = weekDisplayData[index];
-           switch (status) {
-             case StreakStatus.yes:
-               iconWidget = Image.asset(fireIconPath, width: iconSize, height: iconSize, key: ValueKey('yes_$index'));
-               break;
-             case StreakStatus.no:
-                iconWidget = Image.asset(extinguisherIconPath, width: iconSize, height: iconSize, key: ValueKey('no_$index'));
-               break;
-             case StreakStatus.empty:
-             // ignore: unreachable_switch_default
-             default:
-                 // This case should ideally not be reached if data exists
-                 // If it does, render an empty circle as a fallback
-                 iconWidget = Container(
-                   width: iconSize,
-                   height: iconSize,
-                   key: ValueKey('fallback_empty_$index'),
-                   decoration: BoxDecoration(
-                     shape: BoxShape.circle,
-                     color: Colors.white,
-                     border: Border.all(color: Colors.grey.shade400, width: 1.5)
-                   ),
-                 );
-                 break;
+          StreakStatus status = weekDisplayData[index];
+          switch (status) {
+            case StreakStatus.yes:
+              iconWidget = Image.asset(
+                fireIconPath,
+                width: iconSize,
+                height: iconSize,
+                key: ValueKey('yes_$index'),
+              );
+              break;
+            case StreakStatus.no:
+              iconWidget = Image.asset(
+                extinguisherIconPath,
+                width: iconSize,
+                height: iconSize,
+                key: ValueKey('no_$index'),
+              );
+              break;
+            case StreakStatus.empty:
+            // ignore: unreachable_switch_default
+            default:
+              // This case should ideally not be reached if data exists
+              // If it does, render an empty circle as a fallback
+              iconWidget = Container(
+                width: iconSize,
+                height: iconSize,
+                key: ValueKey('fallback_empty_$index'),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade400, width: 1.5),
+                ),
+              );
+              break;
           }
         } else {
-            iconWidget = Container(
-             width: iconSize,
-             height: iconSize,
-             key: ValueKey('empty_$index'),
-             decoration: BoxDecoration(
-               shape: BoxShape.circle,
-               color: Colors.white,
-               border: Border.all(color: Colors.grey.shade400, width: 1.5)
-             ),
-           );
+          iconWidget = Container(
+            width: iconSize,
+            height: iconSize,
+            key: ValueKey('empty_$index'),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade400, width: 1.5),
+            ),
+          );
         }
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -202,7 +219,7 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
 
   Widget _buildStreakText() {
     return Text(
-      "${totalStreak.toString().padLeft(2,'0')} - DAY STREAK",
+      "${totalStreak.toString().padLeft(2, '0')} - DAY STREAK",
       style: GoogleFonts.ewert(
         fontSize: 24,
         fontWeight: FontWeight.bold,
@@ -260,26 +277,34 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
                 ),
                 child: Text(
                   'Yes',
-                  style: TextStyle(fontSize: 16, color: buttonTextColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: buttonTextColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               ElevatedButton(
                 onPressed: answeredToday ? null : () => _handleAnswer(false),
                 style: ElevatedButton.styleFrom(
-                   backgroundColor: buttonBgColor,
-                   disabledBackgroundColor: buttonBgColor.withOpacity(0.5),
-                   shape: RoundedRectangleBorder(
+                  backgroundColor: buttonBgColor,
+                  disabledBackgroundColor: buttonBgColor.withOpacity(0.5),
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                   padding: EdgeInsets.symmetric(horizontal: 45, vertical: 12),
                 ),
-                 child: Text(
+                child: Text(
                   'No',
-                  style: TextStyle(fontSize: 16, color: buttonTextColor, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: buttonTextColor,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -301,13 +326,17 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
         Image.asset(
           freedomImagePath,
           height: 60,
-           errorBuilder: (context, error, stackTrace) {
-             print("Error loading image: $freedomImagePath, Error: $error");
-             return Container(
-                height: 60,
-                child: Icon(Icons.celebration_outlined, size: 40, color: Colors.grey),
-             );
-           },
+          errorBuilder: (context, error, stackTrace) {
+            print("Error loading image: $freedomImagePath, Error: $error");
+            return SizedBox(
+              height: 60,
+              child: Icon(
+                Icons.celebration_outlined,
+                size: 40,
+                color: Colors.grey,
+              ),
+            );
+          },
         ),
       ],
     );
@@ -324,7 +353,7 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
             child: Image.asset(
               'assets/images/breakfree_bg.png',
               fit: BoxFit.cover,
-               alignment: Alignment.topCenter,
+              alignment: Alignment.topCenter,
             ),
           ),
           SafeArea(
@@ -340,23 +369,27 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
                         top: Radius.circular(30.0),
                       ),
                     ),
-                    child: isLoading
-                      ? Center(child: CircularProgressIndicator())
-                      : SingleChildScrollView(
-                         padding: const EdgeInsets.symmetric(vertical: 25.0, horizontal: 15.0),
-                         child: Column(
-                           children: [
-                             _buildStreakIcons(),
-                             SizedBox(height: 15),
-                             _buildStreakText(),
-                             SizedBox(height: 25),
-                             _buildQuestionCard(),
-                             SizedBox(height: 35),
-                             _buildMilestones(),
-                             SizedBox(height: 20),
-                           ],
-                         ),
-                      ),
+                    child:
+                        isLoading
+                            ? Center(child: CircularProgressIndicator())
+                            : SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 25.0,
+                                horizontal: 15.0,
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildStreakIcons(),
+                                  SizedBox(height: 15),
+                                  _buildStreakText(),
+                                  SizedBox(height: 25),
+                                  _buildQuestionCard(),
+                                  SizedBox(height: 35),
+                                  _buildMilestones(),
+                                  SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
                   ),
                 ),
               ],
@@ -365,13 +398,17 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
 
           // --- ADDED Back Button ---
           Positioned(
-            top: MediaQuery.of(context).padding.top + 5, // Position below status bar
+            top:
+                MediaQuery.of(context).padding.top +
+                5, // Position below status bar
             left: 10,
             child: IconButton(
               icon: Icon(
                 Icons.arrow_back_ios_new, // Or Icons.arrow_back
                 color: Colors.white, // White color for visibility on background
-                shadows: [BoxShadow(color: Colors.black54, blurRadius: 3)], // Shadow for contrast
+                shadows: [
+                  BoxShadow(color: Colors.black54, blurRadius: 3),
+                ], // Shadow for contrast
               ),
               tooltip: 'Back to Activities',
               onPressed: () {
@@ -379,8 +416,8 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
               },
             ),
           ),
-          // --- END Back Button ---
 
+          // --- END Back Button ---
         ],
       ),
       // --- FIXED Bottom Nav Bar Call ---

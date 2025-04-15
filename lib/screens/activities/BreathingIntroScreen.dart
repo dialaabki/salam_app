@@ -8,10 +8,10 @@ import 'BreathingActivityScreen.dart'; // Ensure filename case matches yours
 import '../../widgets/bottom_nav_bar.dart'; // Verify this path!
 
 class BreathingIntroScreen extends StatelessWidget {
-   // Optional: static const routeName = '/breathingIntro';
+  // Optional: static const routeName = '/breathingIntro';
 
   // Add const constructor
-  const BreathingIntroScreen({Key? key}) : super(key: key);
+  const BreathingIntroScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,10 @@ class BreathingIntroScreen extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 30.0,
+                vertical: 20.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -54,7 +57,8 @@ class BreathingIntroScreen extends StatelessWidget {
                     ), // Add trailing comma
                   ), // Add trailing comma
                   SizedBox(height: 40), // Add trailing comma
-                  Center( // Center the "5 deep breaths" text
+                  Center(
+                    // Center the "5 deep breaths" text
                     child: Text(
                       '5 deep breaths',
                       style: TextStyle(
@@ -70,31 +74,45 @@ class BreathingIntroScreen extends StatelessWidget {
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => BreathingActivityScreen()), // Add trailing comma
+                          MaterialPageRoute(
+                            builder: (context) => BreathingActivityScreen(),
+                          ), // Add trailing comma
                         ); // Add trailing comma
                       }, // Add trailing comma
                       style: ElevatedButton.styleFrom(
                         backgroundColor: startButtonColor,
-                        padding: EdgeInsets.symmetric(horizontal: 90, vertical: 18),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 90,
+                          vertical: 18,
+                        ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30), // Add trailing comma
+                          borderRadius: BorderRadius.circular(
+                            30,
+                          ), // Add trailing comma
                         ), // Add trailing comma
                       ), // Add trailing comma
                       child: Text(
                         'Start',
-                        style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold), // Add trailing comma
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ), // Add trailing comma
                       ), // Add trailing comma
                     ), // Add trailing comma
                   ), // Add trailing comma
-                  SizedBox(height: 20), // Space before bottom nav bar - Add trailing comma
+                  SizedBox(
+                    height: 20,
+                  ), // Space before bottom nav bar - Add trailing comma
                 ], // Add trailing comma
               ), // Add trailing comma
             ), // Add trailing comma
           ), // Add trailing comma
-
           // Back Button
           Positioned(
-            top: MediaQuery.of(context).padding.top + 5, // Position below status bar
+            top:
+                MediaQuery.of(context).padding.top +
+                5, // Position below status bar
             left: 10,
             child: IconButton(
               icon: Icon(
@@ -110,6 +128,7 @@ class BreathingIntroScreen extends StatelessWidget {
         ], // Add trailing comma
       ), // Add trailing comma
       // Use the AppBottomNavBar class constructor
-bottomNavigationBar: const AppBottomNavBar(),    ); // End Scaffold
+      bottomNavigationBar: const AppBottomNavBar(),
+    ); // End Scaffold
   }
 }

@@ -24,7 +24,8 @@ import 'screens/DoctorDirectory/DoctorDirectoryScreen.dart';
 
 // --- Import ThemeNotifier --- (Keep your existing import)
 import 'providers/theme_provider.dart'; // Adjust path if needed
-
+// Global Theme Notifier (as used in SettingsScreen)
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 // --- Define Colors used in Themes --- (Keep as is)
 const Color mainAppColor = Color(0xFF5588A4);

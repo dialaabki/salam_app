@@ -25,7 +25,7 @@ const String iconMedicineDefaultPath = basePath + 'icon_medicine_default.png';
 const String iconActivityDefaultPath = basePath + 'icon_activity_default.png';
 
 class RemindersListScreen extends StatefulWidget {
-  const RemindersListScreen({Key? key}) : super(key: key);
+  const RemindersListScreen({super.key});
 
   @override
   _RemindersListScreenState createState() => _RemindersListScreenState();

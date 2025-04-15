@@ -14,13 +14,15 @@ class BreathingActivityScreen extends StatefulWidget {
   // Optional: Add static const routeName = '/breathingActivity';
 
   // Add const constructor
-  const BreathingActivityScreen({Key? key}) : super(key: key);
+  const BreathingActivityScreen({super.key});
 
   @override
-  _BreathingActivityScreenState createState() => _BreathingActivityScreenState();
+  _BreathingActivityScreenState createState() =>
+      _BreathingActivityScreenState();
 }
 
-class _BreathingActivityScreenState extends State<BreathingActivityScreen> with SingleTickerProviderStateMixin {
+class _BreathingActivityScreenState extends State<BreathingActivityScreen>
+    with SingleTickerProviderStateMixin {
   // Animation controller to manage the timing and progress of animations
   late AnimationController _controller;
   // Animation for the height of the vertical progress bar
@@ -50,34 +52,44 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
 
     // Define the bar animation (0.0 to 1.0 for height factor)
     _barAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut), // Add trailing comma
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ), // Add trailing comma
     ); // Add trailing comma
 
     // Define the lung animation (subtle scaling)
     _lungAnimation = TweenSequence<double>([
-        TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.08), weight: 50), // Scale up
-        TweenSequenceItem(tween: Tween(begin: 1.08, end: 1.0), weight: 50), // Scale down
-    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)); // Add trailing comma
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.08),
+        weight: 50,
+      ), // Scale up
+      TweenSequenceItem(
+        tween: Tween(begin: 1.08, end: 1.0),
+        weight: 50,
+      ), // Scale down
+    ]).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    ); // Add trailing comma
 
     _startCycle(); // Begin the first breathing cycle
   }
 
   // Stops timers and cleans up resources before navigating away
   void _stopActivityAndNavigate(Function navigationAction) {
-      _activityTimer?.cancel();
-      _navTimer?.cancel();
-      // Important: Dispose controller *after* potential navigation
-      // to avoid errors if build is called during transition.
-      // Alternatively, stop it here and dispose in dispose() method.
-      _controller.stop();
-      // Ensure navigation happens after current frame build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-           navigationAction();
-        }
-      });
+    _activityTimer?.cancel();
+    _navTimer?.cancel();
+    // Important: Dispose controller *after* potential navigation
+    // to avoid errors if build is called during transition.
+    // Alternatively, stop it here and dispose in dispose() method.
+    _controller.stop();
+    // Ensure navigation happens after current frame build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        navigationAction();
+      }
+    });
   }
-
 
   // Starts a new breathing cycle (inhale -> exhale -> next cycle/complete)
   void _startCycle() {
@@ -89,7 +101,9 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
       _stopActivityAndNavigate(() {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => BreathingCompletionScreen()), // Add trailing comma
+          MaterialPageRoute(
+            builder: (context) => BreathingCompletionScreen(),
+          ), // Add trailing comma
         ); // Add trailing comma
       });
       return; // Exit the function
@@ -97,11 +111,12 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
 
     // Start Inhale Phase
     if (mounted) {
-      setState(() => _currentState = BreathingState.inhale); // Update state text/image
+      setState(
+        () => _currentState = BreathingState.inhale,
+      ); // Update state text/image
       _controller.duration = _inhaleDuration; // Set animation duration
       _controller.forward(from: 0.0); // Start animation (bar up, lungs expand)
     }
-
 
     // Schedule the start of the exhale phase after inhale duration
     _activityTimer = Timer(_inhaleDuration, _startExhale);
@@ -109,21 +124,24 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
 
   // Starts the exhale phase
   void _startExhale() {
-     if (!mounted) return; // Check if mounted
+    if (!mounted) return; // Check if mounted
 
-     // Start Exhale Phase
-     setState(() => _currentState = BreathingState.exhale); // Update state text/image
-     _controller.duration = _exhaleDuration; // Set animation duration
-     _controller.reverse(from: 1.0); // Reverse animation (bar down, lungs shrink)
+    // Start Exhale Phase
+    setState(
+      () => _currentState = BreathingState.exhale,
+    ); // Update state text/image
+    _controller.duration = _exhaleDuration; // Set animation duration
+    _controller.reverse(
+      from: 1.0,
+    ); // Reverse animation (bar down, lungs shrink)
 
-     // Schedule the start of the *next* cycle after exhale duration
-     _activityTimer = Timer(_exhaleDuration, () {
-         if (!mounted) return;
-         setState(() => _breathCount++); // Increment breath counter
-         _startCycle(); // Start the next full inhale->exhale cycle
-     }); // Add trailing comma
+    // Schedule the start of the *next* cycle after exhale duration
+    _activityTimer = Timer(_exhaleDuration, () {
+      if (!mounted) return;
+      setState(() => _breathCount++); // Increment breath counter
+      _startCycle(); // Start the next full inhale->exhale cycle
+    }); // Add trailing comma
   }
-
 
   @override
   void dispose() {
@@ -137,18 +155,24 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
   // Helper function to get the correct lung image based on the current state
   String _getLungImage() {
     switch (_currentState) {
-      case BreathingState.inhale: return 'assets/images/lungs_inhale.png';
-      case BreathingState.exhale: return 'assets/images/lungs_exhale.png';
-      case BreathingState.hold: return 'assets/images/lungs_exhale.png'; // Choose appropriate hold image
+      case BreathingState.inhale:
+        return 'assets/images/lungs_inhale.png';
+      case BreathingState.exhale:
+        return 'assets/images/lungs_exhale.png';
+      case BreathingState.hold:
+        return 'assets/images/lungs_exhale.png'; // Choose appropriate hold image
     }
   }
 
   // Helper function to get the status text based on the current state
   String _getStatusText() {
-     switch (_currentState) {
-      case BreathingState.inhale: return 'Breathe In';
-      case BreathingState.exhale: return 'Breathe Out';
-      case BreathingState.hold: return 'Hold'; // Status text for hold state
+    switch (_currentState) {
+      case BreathingState.inhale:
+        return 'Breathe In';
+      case BreathingState.exhale:
+        return 'Breathe Out';
+      case BreathingState.hold:
+        return 'Hold'; // Status text for hold state
     }
   }
 
@@ -169,47 +193,60 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
         children: [
           // Background Image
           Positioned.fill(
-            child: Image.asset('assets/images/breathing_bg.png', fit: BoxFit.cover), // Add trailing comma
+            child: Image.asset(
+              'assets/images/breathing_bg.png',
+              fit: BoxFit.cover,
+            ), // Add trailing comma
           ), // Add trailing comma
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-              child: Column( // Main layout column
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 20.0,
+              ),
+              child: Column(
+                // Main layout column
                 children: [
                   Spacer(flex: 2), // Push content down from the top
-
                   // Central Circle containing animated lungs
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.7, // Circle size relative to screen
+                    width:
+                        MediaQuery.of(context).size.width *
+                        0.7, // Circle size relative to screen
                     height: MediaQuery.of(context).size.width * 0.7,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: outerCircleColor, width: 15), // Outer ring
+                      border: Border.all(
+                        color: outerCircleColor,
+                        width: 15,
+                      ), // Outer ring
                       color: circleBgColor, // Semi-transparent background
                     ), // Add trailing comma
                     child: Center(
                       // Use AnimatedBuilder to react to lung animation changes
                       child: AnimatedBuilder(
-                         animation: _lungAnimation,
-                         builder: (context, child) {
-                           // Apply scaling transformation based on animation value
-                           return Transform.scale(
-                             scale: _lungAnimation.value,
-                             child: Image.asset(
-                               _getLungImage(), // Get the correct lung image for the state
-                               height: MediaQuery.of(context).size.width * 0.35, // Image size
-                             ), // Add trailing comma
-                           ); // Add trailing comma
-                         }, // Add trailing comma
-                       ), // Add trailing comma
+                        animation: _lungAnimation,
+                        builder: (context, child) {
+                          // Apply scaling transformation based on animation value
+                          return Transform.scale(
+                            scale: _lungAnimation.value,
+                            child: Image.asset(
+                              _getLungImage(), // Get the correct lung image for the state
+                              height:
+                                  MediaQuery.of(context).size.width *
+                                  0.35, // Image size
+                            ), // Add trailing comma
+                          ); // Add trailing comma
+                        }, // Add trailing comma
+                      ), // Add trailing comma
                     ), // Add trailing comma
                   ), // Add trailing comma
-                   Spacer(flex: 1), // Space below the circle
-
+                  Spacer(flex: 1), // Space below the circle
                   // Row containing the animated bar and status text
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end, // Align bar to bottom
+                    crossAxisAlignment:
+                        CrossAxisAlignment.end, // Align bar to bottom
                     children: [
                       // Vertical Bar Container (acts as the track)
                       Container(
@@ -217,7 +254,9 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
                         height: 150, // Max bar height
                         decoration: BoxDecoration(
                           color: barColor.withOpacity(0.2), // Track color
-                          borderRadius: BorderRadius.circular(15), // Add trailing comma
+                          borderRadius: BorderRadius.circular(
+                            15,
+                          ), // Add trailing comma
                         ), // Add trailing comma
                         alignment: Alignment.bottomCenter, // Fill from bottom
                         // Use AnimatedBuilder to react to bar animation changes
@@ -226,11 +265,16 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
                           builder: (context, child) {
                             // Use FractionallySizedBox to control the height
                             return FractionallySizedBox(
-                              heightFactor: _barAnimation.value, // Height based on animation
-                              child: Container( // The filled part of the bar
+                              heightFactor:
+                                  _barAnimation
+                                      .value, // Height based on animation
+                              child: Container(
+                                // The filled part of the bar
                                 decoration: BoxDecoration(
                                   color: barColor, // Active bar color
-                                  borderRadius: BorderRadius.circular(15), // Add trailing comma
+                                  borderRadius: BorderRadius.circular(
+                                    15,
+                                  ), // Add trailing comma
                                 ), // Add trailing comma
                               ), // Add trailing comma
                             ); // Add trailing comma
@@ -238,7 +282,6 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
                         ), // Add trailing comma
                       ), // Add trailing comma
                       SizedBox(width: 25), // Space between bar and text
-
                       // Status Text (Breathe In / Breathe Out / Hold)
                       Text(
                         _getStatusText(), // Get text based on current state
@@ -255,10 +298,11 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
               ), // Add trailing comma
             ), // Add trailing comma
           ), // Add trailing comma
-
-           // --- ADDED Back Button ---
+          // --- ADDED Back Button ---
           Positioned(
-            top: MediaQuery.of(context).padding.top + 5, // Position below status bar
+            top:
+                MediaQuery.of(context).padding.top +
+                5, // Position below status bar
             left: 10,
             child: IconButton(
               icon: Icon(
@@ -267,20 +311,22 @@ class _BreathingActivityScreenState extends State<BreathingActivityScreen> with 
               ), // Add trailing comma
               tooltip: 'Back', // Simple tooltip
               onPressed: () {
-                 // Stop animation/timers and navigate back
-                 _stopActivityAndNavigate(() {
-                   Navigator.pop(context);
-                 });
+                // Stop animation/timers and navigate back
+                _stopActivityAndNavigate(() {
+                  Navigator.pop(context);
+                });
               }, // Add trailing comma
             ), // Add trailing comma
           ), // Add trailing comma
-          // --- END Back Button ---
 
+          // --- END Back Button ---
         ], // Add trailing comma
       ), // Add trailing comma
       // --- FIXED Bottom Nav Bar Call ---
       // Use the AppBottomNavBar class constructor
-      bottomNavigationBar: AppBottomNavBar(navigationTimer: _navTimer), // Pass timer if needed by nav bar
+      bottomNavigationBar: AppBottomNavBar(
+        navigationTimer: _navTimer,
+      ), // Pass timer if needed by nav bar
       // --- END FIX ---
     ); // End Scaffold
   }
