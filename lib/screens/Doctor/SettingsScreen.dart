@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import '/main.dart'; // Assuming themeNotifier is accessible via main.dart
 // Import edit screens if/when you create them
 // import 'edit_setting_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart'; // Adjust path if needed
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

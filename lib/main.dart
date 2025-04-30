@@ -21,6 +21,8 @@ import 'screens/SelfAssessment/SelfAssessmentScreen.dart';
 import 'screens/activities/ActivitySelectionScreen.dart';
 import 'screens/resources/ResourcesListScreen.dart';
 import 'screens/DoctorDirectory/DoctorDirectoryScreen.dart';
+// --- ADD THIS IMPORT ---
+import 'screens/onboarding/LanguageSelectionScreen.dart';
 
 // --- Import ThemeNotifier --- (Keep your existing import)
 import 'providers/theme_provider.dart'; // Adjust path if needed
@@ -150,6 +152,7 @@ class MyApp extends StatelessWidget {
   static const String activitySelectionRoute = '/activitySelection';
   static const String resourcesRoute = '/resources';
   static const String doctorsRoute = '/doctors';
+  static const String languageSelectionRoute = '/language-selection';
 
 
   @override
@@ -171,9 +174,10 @@ class MyApp extends StatelessWidget {
              Locale('en', ''),
              // Locale('ar', ''),
            ],
-          initialRoute: userHomeRoute,
+          initialRoute: languageSelectionRoute,
           // Keep existing routes
           routes: {
+            languageSelectionRoute: (context) => const LanguageSelectionScreen(),
             userHomeRoute: (context) => const UserHomeScreen(),
             userProgressRoute: (context) => const UserProgressHistoryScreen(),
             userNotificationsRoute: (context) => const UserNotificationsScreen(),

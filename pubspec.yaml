@@ -42,7 +42,9 @@ dependencies:
   uuid: ^4.3.3 # Use the latest version
   collection: ^1.18.0
   video_player_web: ^2.0.15
-  firebase_core: 3.13.0 # <-- Use the latest version from pub.dev
+  firebase_core: ^3.13.0  # Example: Use the latest CORE version compatible with others
+  firebase_auth: ^5.5.2  # Example: Use the latest AUTH version
+  cloud_firestore: ^5.6.6 # Example: Use the latest FIRESTORE version
 
   google_fonts: ^6.2.1
   audioplayers: ^6.4.0 # Changed to caret syntax for flexibility

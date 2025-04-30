@@ -1,8 +1,16 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+// --- ADD IMPORTS for the specific signup screens ---
+import 'UserSignUpScreen.dart';   // Import the User sign up screen
+import 'DoctorSignUpScreen.dart';  // Import the Doctor sign up screen
+
 class SignupScreen extends StatelessWidget {
-  const SignupScreen({super.key});
+  // --- Ensure this class name matches the file name (if it was lowercase 's' before) ---
+  // If your actual class name IS 'signupScreen', keep it lowercase here.
+  // But convention is UpperCamelCase 'SignupScreen'.
+
+  const SignupScreen({super.key}); // Use standard convention if class name is SignupScreen
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +83,13 @@ class SignupScreen extends StatelessWidget {
                       widthFactor,
                       heightFactor,
                       onPressed: () {
-                        // Navigate to user sign up
+                        // --- NAVIGATE TO USER SIGN UP SCREEN ---
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            // Ensure the class name 'UserSignUpScreen' is correct
+                            builder: (context) => const UserSignUpScreen(),
+                          ),
+                        );
                       },
                     ),
 
@@ -87,7 +101,13 @@ class SignupScreen extends StatelessWidget {
                       widthFactor,
                       heightFactor,
                       onPressed: () {
-                        // Navigate to doctor sign up
+                        // --- NAVIGATE TO DOCTOR SIGN UP SCREEN ---
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            // Ensure the class name 'DoctorSignUpScreen' is correct
+                            builder: (context) => const DoctorSignUpScreen(),
+                          ),
+                        );
                       },
                     ),
 
@@ -125,7 +145,7 @@ class SignupScreen extends StatelessWidget {
       width: 250 * widthFactor,
       height: 80 * heightFactor,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: onPressed, // The navigation logic is passed here
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5588A4),
           shape: RoundedRectangleBorder(
