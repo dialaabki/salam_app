@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:math' as math;
+// Firebase Imports
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // For date formatting
+
 // Ensure this path is correct for your project structure
 import '../../widgets/bottom_nav_bar.dart';
 
@@ -11,8 +17,6 @@ enum StreakStatus { yes, no, empty }
 
 class BreakFreeScreen extends StatefulWidget {
   const BreakFreeScreen({super.key});
-
-  // static const routeName = '/breakFree'; // Optional
 
   @override
   _BreakFreeScreenState createState() => _BreakFreeScreenState();
@@ -23,8 +27,13 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
   int totalStreak = 0;
   DateTime? lastAnswerDate;
   bool answeredToday = false;
-  bool isLoading = true;
-  Timer? _navTimer; // Only needed if passed to AppBottomNavBar
+  bool isLoading = true; // For initial SharedPreferences load
+  Timer? _navTimer;
+
+  // --- Firebase and Saving State ---
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isSavingToFirebase = false; // For Firestore saving operation
 
   static const String _streakKey = 'breakFree_totalStreak';
   static const String _lastDateKey = 'breakFree_lastAnswerDate';
@@ -47,17 +56,16 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
   }
 
   Future<void> _loadData() async {
+    // ... (SharedPreferences loading logic remains the same)
     try {
       final prefs = await SharedPreferences.getInstance();
       totalStreak = prefs.getInt(_streakKey) ?? 0;
-
       String? dateString = prefs.getString(_lastDateKey);
       if (dateString != null) {
         lastAnswerDate = DateTime.tryParse(dateString);
       } else {
         lastAnswerDate = null;
       }
-
       String savedWeekData = prefs.getString(_weekDataKey) ?? '';
       if (savedWeekData.isNotEmpty) {
         List<String> items = savedWeekData.split(',');
@@ -70,7 +78,6 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
                 }
                 return StreakStatus.empty;
               } catch (e) {
-                print("Error parsing week data item: $item, Error: $e");
                 return StreakStatus.empty;
               }
             }).toList();
@@ -80,24 +87,17 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
       } else {
         weekDisplayData = [];
       }
-
       _checkIfAnsweredToday();
     } catch (e) {
-      print("Error loading data: $e");
-      weekDisplayData = [];
-      totalStreak = 0;
-      lastAnswerDate = null;
-      answeredToday = false;
+      // Handle error
     } finally {
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() { isLoading = false; });
       }
     }
   }
 
-  Future<void> _saveData() async {
+  Future<void> _saveDataToPrefs() async { // Renamed from _saveData for clarity
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_streakKey, totalStreak);
@@ -110,11 +110,9 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
           .map((status) => status.index.toString())
           .join(',');
       await prefs.setString(_weekDataKey, weekDataString);
-      print(
-        "Data Saved: Streak=$totalStreak, LastDate=$lastAnswerDate, WeekData=$weekDataString",
-      );
+      print("Local Data Saved: Streak=$totalStreak, LastDate=$lastAnswerDate, WeekData=$weekDataString");
     } catch (e) {
-      print("Error saving data: $e");
+      print("Error saving data to SharedPreferences: $e");
     }
   }
 
@@ -130,12 +128,65 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
         lastAnswerDate!.day == now.day;
   }
 
+  Future<void> _saveBreakFreeDayToFirestore() async {
+    if (!mounted) return;
+
+    final user = _auth.currentUser;
+    if (user == null) {
+      print("BreakFree: User not logged in, cannot save to Firestore.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Not logged in. Progress not saved online."), backgroundColor: Colors.orange),
+        );
+      }
+      return; // Don't proceed if no user
+    }
+
+    // For BreakFree, we log a "duration" of 1 to represent a successful day
+    const int durationToLog = 1;
+    const String activityName = "BreakFree"; // Activity name for Firestore
+
+    print("BreakFree: Attempting to log to Firestore. User ID: ${user.uid}, Duration: $durationToLog");
+    final now = DateTime.now();
+    final String dateString = DateFormat('yyyy-MM-dd').format(now);
+    final String documentId = "${user.uid}_$dateString";
+    final DocumentReference dailySummaryRef = _firestore.collection('daily_activity_summary').doc(documentId);
+
+    final activityData = {
+      'userId': user.uid,
+      'date': Timestamp.fromDate(DateTime(now.year, now.month, now.day)),
+      'durations': {activityName: FieldValue.increment(durationToLog.toDouble())},
+      'lastUpdatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await dailySummaryRef.set(activityData, SetOptions(merge: true));
+      print("BreakFree: Firestore log SUCCESS!");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Great job! Progress saved."), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e, s) {
+      print("BreakFree: FIRESTORE SAVE EXCEPTION: $e\n$s");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error saving online: ${e.toString().substring(0, math.min(e.toString().length, 100))}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+
   Future<void> _handleAnswer(bool feltInControl) async {
-    if (answeredToday || isLoading || !mounted) return;
+    if (answeredToday || isLoading || _isSavingToFirebase || !mounted) return;
+
+    setState(() { _isSavingToFirebase = true; }); // Indicate saving process starts
 
     final now = DateTime.now();
     final newStatus = feltInControl ? StreakStatus.yes : StreakStatus.no;
 
+    // Update local state for UI immediately
     setState(() {
       if (feltInControl) {
         totalStreak++;
@@ -152,10 +203,28 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
       lastAnswerDate = now;
     });
 
-    await _saveData();
+    await _saveDataToPrefs(); // Save to SharedPreferences
+
+    if (feltInControl) {
+      // Only save to Firestore if they felt in control (a "successful" day)
+      await _saveBreakFreeDayToFirestore();
+    } else {
+      // If "No", still show a message for local save if desired
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Your response is noted. Keep trying!"), backgroundColor: Colors.blueGrey),
+        );
+      }
+    }
+    
+    if (mounted) {
+      setState(() { _isSavingToFirebase = false; }); // Indicate saving process ends
+    }
   }
 
+
   Widget _buildStreakIcons() {
+    // ... (remains the same)
     const double iconSize = 40.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -165,143 +234,63 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
           StreakStatus status = weekDisplayData[index];
           switch (status) {
             case StreakStatus.yes:
-              iconWidget = Image.asset(
-                fireIconPath,
-                width: iconSize,
-                height: iconSize,
-                key: ValueKey('yes_$index'),
-              );
+              iconWidget = Image.asset(fireIconPath, width: iconSize, height: iconSize, key: ValueKey('yes_$index'));
               break;
             case StreakStatus.no:
-              iconWidget = Image.asset(
-                extinguisherIconPath,
-                width: iconSize,
-                height: iconSize,
-                key: ValueKey('no_$index'),
-              );
+              iconWidget = Image.asset(extinguisherIconPath, width: iconSize, height: iconSize, key: ValueKey('no_$index'));
               break;
             case StreakStatus.empty:
-            // ignore: unreachable_switch_default
             default:
-              // This case should ideally not be reached if data exists
-              // If it does, render an empty circle as a fallback
-              iconWidget = Container(
-                width: iconSize,
-                height: iconSize,
-                key: ValueKey('fallback_empty_$index'),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.grey.shade400, width: 1.5),
-                ),
-              );
+              iconWidget = Container(width: iconSize, height: iconSize, key: ValueKey('fallback_empty_$index'), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, border: Border.all(color: Colors.grey.shade400, width: 1.5)));
               break;
           }
         } else {
-          iconWidget = Container(
-            width: iconSize,
-            height: iconSize,
-            key: ValueKey('empty_$index'),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: Colors.grey.shade400, width: 1.5),
-            ),
-          );
+          iconWidget = Container(width: iconSize, height: iconSize, key: ValueKey('empty_$index'), decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, border: Border.all(color: Colors.grey.shade400, width: 1.5)));
         }
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-          child: iconWidget,
-        );
+        return Padding(padding: const EdgeInsets.symmetric(horizontal: 4.0), child: iconWidget);
       }),
     );
   }
 
   Widget _buildStreakText() {
+    // ... (remains the same)
     return Text(
       "${totalStreak.toString().padLeft(2, '0')} - DAY STREAK",
-      style: GoogleFonts.ewert(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1E4B5F),
-        letterSpacing: 1.5,
-      ),
+      style: GoogleFonts.ewert(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E4B5F), letterSpacing: 1.5),
     );
   }
 
   Widget _buildQuestionCard() {
+    // ... (remains the same, but onPressed will use _isSavingToFirebase)
     final Color cardColor = Color(0xFF3E8A9A);
     final Color buttonTextColor = cardColor;
     final Color buttonBgColor = Colors.white;
+    bool buttonsDisabled = answeredToday || _isSavingToFirebase;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 5.0),
       padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(15.0),
-      ),
+      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(15.0)),
       child: Column(
         children: [
-          Text(
-            'Did you feel in control today?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          Text('Did you feel in control today?', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           SizedBox(height: 5),
-          Text(
-            '(No worries if not, tomorrow is a new day!)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.8),
-            ),
-          ),
+          Text('(No worries if not, tomorrow is a new day!)', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8))),
           SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
-                onPressed: answeredToday ? null : () => _handleAnswer(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: buttonBgColor,
-                  disabledBackgroundColor: buttonBgColor.withOpacity(0.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 45, vertical: 12),
-                ),
-                child: Text(
-                  'Yes',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: buttonsDisabled ? null : () => _handleAnswer(true),
+                style: ElevatedButton.styleFrom(backgroundColor: buttonBgColor, disabledBackgroundColor: buttonBgColor.withOpacity(0.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), padding: EdgeInsets.symmetric(horizontal: 45, vertical: 12)),
+                child: _isSavingToFirebase && !answeredToday // Show loader only if this button could be pressed
+                    ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: buttonTextColor))
+                    : Text('Yes', style: TextStyle(fontSize: 16, color: buttonTextColor, fontWeight: FontWeight.bold)),
               ),
               ElevatedButton(
-                onPressed: answeredToday ? null : () => _handleAnswer(false),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: buttonBgColor,
-                  disabledBackgroundColor: buttonBgColor.withOpacity(0.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 45, vertical: 12),
-                ),
-                child: Text(
-                  'No',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: buttonTextColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                onPressed: buttonsDisabled ? null : () => _handleAnswer(false),
+                style: ElevatedButton.styleFrom(backgroundColor: buttonBgColor, disabledBackgroundColor: buttonBgColor.withOpacity(0.5), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), padding: EdgeInsets.symmetric(horizontal: 45, vertical: 12)),
+                child: Text('No', style: TextStyle(fontSize: 16, color: buttonTextColor, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -311,51 +300,24 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
   }
 
   Widget _buildMilestones() {
-    return Column(
+    // ... (remains the same)
+     return Column(
       children: [
-        Text(
-          'Keep Going, Unlock Your Milestones!',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E4B5F),
-          ),
-        ),
+        Text('Keep Going, Unlock Your Milestones!', textAlign: TextAlign.center, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E4B5F))),
         SizedBox(height: 25),
-        Image.asset(
-          freedomImagePath,
-          height: 60,
-          errorBuilder: (context, error, stackTrace) {
-            print("Error loading image: $freedomImagePath, Error: $error");
-            return SizedBox(
-              height: 60,
-              child: Icon(
-                Icons.celebration_outlined,
-                size: 40,
-                color: Colors.grey,
-              ),
-            );
-          },
-        ),
+        Image.asset(freedomImagePath, height: 60, errorBuilder: (context, error, stackTrace) { return SizedBox(height: 60, child: Icon(Icons.celebration_outlined, size: 40, color: Colors.grey)); }),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (remains mostly the same, ensure isLoading and _isSavingToFirebase are handled for UI feedback)
     final Color mainContentBgColor = Colors.white;
-
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/breakfree_bg.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
-            ),
-          ),
+          Positioned.fill(child: Image.asset('assets/images/breakfree_bg.png', fit: BoxFit.cover, alignment: Alignment.topCenter)),
           SafeArea(
             bottom: false,
             child: Column(
@@ -363,67 +325,41 @@ class _BreakFreeScreenState extends State<BreakFreeScreen> {
                 SizedBox(height: MediaQuery.of(context).size.height * 0.25),
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: mainContentBgColor,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(30.0),
-                      ),
-                    ),
-                    child:
-                        isLoading
-                            ? Center(child: CircularProgressIndicator())
-                            : SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 25.0,
-                                horizontal: 15.0,
-                              ),
-                              child: Column(
-                                children: [
-                                  _buildStreakIcons(),
-                                  SizedBox(height: 15),
-                                  _buildStreakText(),
-                                  SizedBox(height: 25),
-                                  _buildQuestionCard(),
-                                  SizedBox(height: 35),
-                                  _buildMilestones(),
-                                  SizedBox(height: 20),
-                                ],
-                              ),
+                    decoration: BoxDecoration(color: mainContentBgColor, borderRadius: BorderRadius.vertical(top: Radius.circular(30.0))),
+                    child: isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(vertical: 25.0, horizontal: 15.0),
+                            child: Column(
+                              children: [
+                                _buildStreakIcons(),
+                                SizedBox(height: 15),
+                                _buildStreakText(),
+                                SizedBox(height: 25),
+                                _buildQuestionCard(), // Handles _isSavingToFirebase for its buttons
+                                SizedBox(height: 35),
+                                _buildMilestones(),
+                                SizedBox(height: 20),
+                              ],
                             ),
+                          ),
                   ),
                 ),
               ],
             ),
           ),
-
-          // --- ADDED Back Button ---
           Positioned(
-            top:
-                MediaQuery.of(context).padding.top +
-                5, // Position below status bar
+            top: MediaQuery.of(context).padding.top + 5,
             left: 10,
             child: IconButton(
-              icon: Icon(
-                Icons.arrow_back_ios_new, // Or Icons.arrow_back
-                color: Colors.white, // White color for visibility on background
-                shadows: [
-                  BoxShadow(color: Colors.black54, blurRadius: 3),
-                ], // Shadow for contrast
-              ),
+              icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, shadows: [BoxShadow(color: Colors.black54, blurRadius: 3)]),
               tooltip: 'Back to Activities',
-              onPressed: () {
-                Navigator.pop(context); // Simple pop to go back one screen
-              },
+              onPressed: _isSavingToFirebase ? null : () => Navigator.pop(context), // Disable back while saving
             ),
           ),
-
-          // --- END Back Button ---
         ],
       ),
-      // --- FIXED Bottom Nav Bar Call ---
-      // Use the AppBottomNavBar class constructor
       bottomNavigationBar: AppBottomNavBar(navigationTimer: _navTimer),
-      // --- END FIX ---
     );
   }
 }

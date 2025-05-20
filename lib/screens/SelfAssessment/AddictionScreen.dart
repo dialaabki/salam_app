@@ -1,7 +1,18 @@
+// addictionscreen.dart
 import 'package:flutter/material.dart';
+import 'dart:convert'; // Keep for potential future use
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Import the keys and constants
+// Adjust the import path if necessary
+import 'SelfAssessmentScreen.dart'
+    show keyAddiction, firestoreCollection, fieldPartialSaves;
 
 class AddictionScreen extends StatefulWidget {
-  const AddictionScreen({super.key});
+  final Map<String, dynamic>? initialState; // Accepts initial state
+
+  const AddictionScreen({super.key, this.initialState});
 
   @override
   State<AddictionScreen> createState() => _AddictionScreenState();
@@ -18,198 +29,432 @@ class _AddictionScreenState extends State<AddictionScreen> {
   final Color _checklistLabelColor = Colors.grey.shade600;
 
   // --- State Variables ---
-
-  // State for selected substances checklist
-  final Map<String, bool> _selectedSubstances = {
+  // Map to store which substances are selected
+  Map<String, bool> _selectedSubstances = {
     'Alcohol': false,
-    'Cannabis': false,
-    'Stimulants': false,
-    'Opioids': false,
-    'Sedatives & Hypnotics': false,
-    'Hallucinogens': false,
-    'Inhalants': false,
-    'Tobacco & Nicotine': false,
-    'Other': false,
+    'Cannabis': false, // (Marijuana, Hashish)
+    'Stimulants': false, // (Cocaine, Meth, Amphetamines like Adderall)
+    'Opioids':
+        false, // (Heroin, Prescription Painkillers like Oxycodone, Fentanyl)
+    'Sedatives & Hypnotics':
+        false, // (Benzodiazepines like Xanax, Sleeping Pills)
+    'Hallucinogens': false, // (LSD, Psilocybin/Mushrooms, PCP, Ecstasy/MDMA)
+    'Inhalants': false, // (Glue, Solvents, Aerosols)
+    'Tobacco & Nicotine': false, // (Cigarettes, Vapes, Chewing Tobacco)
+    'Other': false, // Specify if needed
     'Nothing': false, // Mutually exclusive option
   };
+  // List for the 11 DSM-5 criteria questions (Yes/No -> true/false)
+  List<bool?> _yesNoAnswers = List.filled(11, null);
 
-  // Examples for substances (optional display)
+  // --- Firebase Instances and State ---
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  User? _currentUser;
+  DocumentReference? _userProgressDocRef;
+  bool _isSaving = false;
+
+  // --- Question Data ---
+  // Examples for substance clarification
   final Map<String, String> _substanceExamples = {
-    'Alcohol': 'examples: Beer, Wine, vodka, whiskey',
-    'Cannabis': 'examples: Marijuana, Hashish',
-    'Stimulants': 'examples: Cocaine, crystal meth, Adderall, Ritalin',
-    'Opioids':
-        'examples: Heroin, Morphine, oxycodone, hydrocodone, fentanyl, tramadol',
-    'Sedatives & Hypnotics':
-        'examples: Xanax, Valium, Ativan, Sleeping pills (e.g., zolpidem, eszopiclone)',
-    'Hallucinogens': 'examples: magic mushrooms, ecstasy, molly, phencyclidine',
-    'Inhalants': 'examples: Glue, Paint thinner, Gasoline,',
+    'Alcohol': '(e.g., Beer, Wine, Liquor)',
+    'Cannabis': '(e.g., Marijuana, Hashish, Edibles)',
+    'Stimulants': '(e.g., Cocaine, Methamphetamine, Adderall, Ritalin)',
+    'Opioids': '(e.g., Heroin, Oxycodone, Fentanyl, Morphine, Codeine)',
+    'Sedatives & Hypnotics': '(e.g., Xanax, Valium, Ambien, Lunesta)',
+    'Hallucinogens': '(e.g., LSD, Psilocybin/Mushrooms, MDMA/Ecstasy, PCP)',
+    'Inhalants': '(e.g., Glue, Paint Thinner, Aerosols, Nitrous Oxide)',
     'Tobacco & Nicotine':
-        'examples: Cigarettes, Cigars, E-cigarettes (vapes), Chewing tobacco',
-    'Other': '', // No examples for Other/Nothing
-    'Nothing': '',
+        '(e.g., Cigarettes, Vapes, Chewing Tobacco, Nicotine Pouches)',
+    'Other': '(Specify if applicable)',
+    'Nothing': '(I have not used any substances in the past 12 months)',
   };
-
-  // State for Yes/No answers (Q1-11), corresponding to DSM-5 criteria for SUD
-  // Initialized to null (unanswered)
-  final List<bool?> _yesNoAnswers = List.filled(11, null);
-
-  // List of Yes/No questions based on DSM-5 SUD criteria
+  // DSM-5 criteria mapped to Yes/No questions
   final List<Map<String, dynamic>> _yesNoQuestions = [
     {
       'id': 1,
       'question':
-          'Q1. Do you often take [substance] in larger amounts or over a longer period than you intended?',
+          'Q1. Taken in larger amounts or over longer period than intended?',
     },
     {
       'id': 2,
       'question':
-          'Q2. Have you tried to cut down or control your use of [substance] but found it difficult?',
+          'Q2. Persistent desire or unsuccessful efforts to cut down/control use?',
     },
     {
       'id': 3,
       'question':
-          'Q3. Do you spend a lot of time obtaining, using, or recovering from the effects of [substance]?',
+          'Q3. Great deal of time spent obtaining, using, or recovering?',
     },
-    {
-      'id': 4,
-      'question':
-          'Q4. Do you experience strong cravings or urges to use [substance]?',
-    },
+    {'id': 4, 'question': 'Q4. Craving, or a strong desire or urge to use?'},
     {
       'id': 5,
       'question':
-          'Q5. Has your substance use caused you to neglect responsibilities at work, school, or home?',
+          'Q5. Recurrent use resulting in failure to fulfill major role obligations (work, school, home)?',
     },
     {
       'id': 6,
       'question':
-          'Q6. Have you continued using [substance] even when it caused problems with your relationships?',
+          'Q6. Continued use despite persistent social/interpersonal problems caused/exacerbated by effects?',
     },
     {
       'id': 7,
       'question':
-          'Q7. Have you given up important social, work, or recreational activities because of your substance use?',
+          'Q7. Important social, occupational, or recreational activities given up/reduced?',
     },
     {
       'id': 8,
       'question':
-          'Q8. Have you used [substance] in situations where it could be physically dangerous (e.g., driving)?',
+          'Q8. Recurrent use in situations where it is physically hazardous (e.g., driving)?',
     },
     {
       'id': 9,
       'question':
-          'Q9. Do you continue using [substance] despite knowing it causes physical or psychological problems?',
+          'Q9. Use continued despite knowledge of persistent physical/psychological problem likely caused/exacerbated by it?',
     },
     {
       'id': 10,
       'question':
-          'Q10. Do you need to use more of [substance] to achieve the same effect, or does the same amount have less effect than before? (Tolerance)',
-    }, // Added context
+          'Q10. Tolerance (need more for same effect, or diminished effect with same amount)?',
+    },
     {
       'id': 11,
       'question':
-          'Q11. Have you experienced withdrawal symptoms when not using [substance] or used [substance] to avoid withdrawal?',
+          'Q11. Withdrawal (characteristic withdrawal syndrome, or substance taken to relieve/avoid withdrawal)?',
     },
   ];
 
-  // --- Computed Property ---
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = _auth.currentUser;
+    if (_currentUser != null) {
+      _userProgressDocRef = _firestore
+          .collection(firestoreCollection)
+          .doc(_currentUser!.uid);
+      _initializeState();
+    } else {
+      print("Error: CurrentUser is null in AddictionScreen initState");
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Error: User not logged in."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          Navigator.of(context).pop(); // Go back
+        }
+      });
+    }
+  }
 
-  // Helper getter to determine if Yes/No questions should be shown.
-  // Returns true ONLY if at least one substance (and NOT 'Nothing') is selected.
+  void _initializeState() {
+    if (widget.initialState != null && mounted) {
+      print(
+        "AddictionScreen: Initializing state from passed data: ${widget.initialState}",
+      );
+      try {
+        Map<String, dynamic> loadedState = widget.initialState!;
+
+        // Load selectedSubstances (Map<String, bool>)
+        if (loadedState.containsKey('selectedSubstances') &&
+            loadedState['selectedSubstances'] is Map) {
+          Map<String, dynamic> rawMap = Map<String, dynamic>.from(
+            loadedState['selectedSubstances'],
+          );
+          Map<String, bool> loadedMap = {};
+          bool keysMatch = true;
+
+          // Check if all keys from saved data exist in the current _selectedSubstances map
+          // and if values are booleans
+          rawMap.forEach((key, value) {
+            if (_selectedSubstances.containsKey(key) && value is bool) {
+              loadedMap[key] = value;
+            } else {
+              print(
+                "AddictionScreen: Mismatch/Invalid key or type in saved 'selectedSubstances': $key -> $value",
+              );
+              keysMatch = false; // Mark as mismatch if key/type invalid
+            }
+          });
+
+          // Also ensure all expected keys are present in the loaded data
+          if (keysMatch &&
+              loadedMap.keys.length == _selectedSubstances.keys.length) {
+            setState(() {
+              _selectedSubstances = loadedMap;
+            });
+            print("AddictionScreen: Initialized selectedSubstances.");
+          } else {
+            print(
+              "AddictionScreen: Initial selectedSubstances keys/types mismatch or incomplete. Using defaults.",
+            );
+            // Reset to default if mismatch
+            setState(() {
+              _selectedSubstances = {
+                for (var k in _selectedSubstances.keys) k: false,
+              };
+            });
+          }
+        } else {
+          print(
+            "AddictionScreen: Initial state missing 'selectedSubstances' or not a map. Using defaults.",
+          );
+        }
+
+        // Load yesNoAnswers (List<bool?>)
+        if (loadedState.containsKey('yesNoAnswers') &&
+            loadedState['yesNoAnswers'] is List) {
+          List<dynamic> dynamicList = loadedState['yesNoAnswers'];
+          // Safely map to List<bool?>, handling potential nulls or wrong types
+          List<bool?> loadedAnswers =
+              dynamicList.map((item) => item is bool ? item : null).toList();
+
+          // Check if length matches expected number of Yes/No questions
+          if (loadedAnswers.length == _yesNoAnswers.length) {
+            setState(() {
+              _yesNoAnswers = loadedAnswers;
+            });
+            print("AddictionScreen: Initialized yesNoAnswers.");
+          } else {
+            print(
+              "AddictionScreen: Initial yesNoAnswers length mismatch (${loadedAnswers.length} vs ${_yesNoAnswers.length}). Using defaults.",
+            );
+            // Keep default if length mismatch
+          }
+        } else {
+          // Only print warning if Yes/No questions *should* have been present
+          if (_shouldShowYesNoQuestionsBasedOnState(loadedState)) {
+            print(
+              "AddictionScreen: Initial state missing 'yesNoAnswers' or not a list, but substances were selected. Using defaults.",
+            );
+          } else {
+            print(
+              "AddictionScreen: Initial state missing 'yesNoAnswers' (expected if 'Nothing' was selected). Using defaults.",
+            );
+          }
+        }
+      } catch (e) {
+        print(
+          "AddictionScreen: Error parsing initial state data: $e. Using defaults for all.",
+        );
+        setState(() {
+          _selectedSubstances = {
+            for (var k in _selectedSubstances.keys) k: false,
+          };
+          _yesNoAnswers = List.filled(11, null);
+        });
+      }
+    } else {
+      print("AddictionScreen: No initial state passed. Using defaults.");
+    }
+  }
+
+  // Helper to check if Yes/No questions should be expected based on loaded state
+  bool _shouldShowYesNoQuestionsBasedOnState(Map<String, dynamic> state) {
+    if (state.containsKey('selectedSubstances') &&
+        state['selectedSubstances'] is Map) {
+      Map<String, dynamic> subs = Map<String, dynamic>.from(
+        state['selectedSubstances'],
+      );
+      if (subs['Nothing'] == true) return false;
+      return subs.entries.any((e) => e.key != 'Nothing' && e.value == true);
+    }
+    return false; // Default to false if data is missing/invalid
+  }
+
+  Future<void> _saveStateToFirestore() async {
+    if (_userProgressDocRef == null) {
+      print(
+        "AddictionScreen Error: Cannot save state, _userProgressDocRef is null.",
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Could not save. Are you logged in?'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    setState(() => _isSaving = true);
+
+    // Prepare combined state for saving
+    final Map<String, dynamic> currentStateForFirestore = {
+      'selectedSubstances': _selectedSubstances, // Map<String, bool>
+      'yesNoAnswers': _yesNoAnswers, // List<bool?>
+    };
+    final String fieldPathForThisStep = '$fieldPartialSaves.$keyAddiction';
+
+    try {
+      await _userProgressDocRef!.set({
+        fieldPartialSaves: {keyAddiction: currentStateForFirestore},
+      }, SetOptions(mergeFields: [fieldPathForThisStep]));
+
+      print("AddictionScreen: Partial state saved to Firestore.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress saved.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, 'saved'); // Signal save
+      }
+    } catch (e) {
+      print("AddictionScreen: Error saving state to Firestore: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save progress.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _clearPartialSaveFromFirestore() async {
+    if (_userProgressDocRef == null || !mounted) return;
+    final String fieldPathForThisStep = '$fieldPartialSaves.$keyAddiction';
+    try {
+      await _userProgressDocRef!.update({
+        fieldPathForThisStep: FieldValue.delete(),
+      });
+      print(
+        "AddictionScreen: Cleared partial save for '$keyAddiction' from Firestore.",
+      );
+    } catch (e) {
+      print(
+        "AddictionScreen: Error clearing partial save for '$keyAddiction' from Firestore: $e.",
+      );
+    }
+  }
+
+  // Getter to determine if the Yes/No questions should be displayed based on current state
   bool get _shouldShowYesNoQuestions => _selectedSubstances.entries.any(
-    (e) => e.key != 'Nothing' && e.value == true,
+    (entry) => entry.key != 'Nothing' && entry.value == true,
   );
 
-  // --- Build Method ---
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Substance Use (Step 6 of 6)'), // Updated step count
-        backgroundColor: _primaryColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          // Return false when popping back manually (indicates incomplete)
-          onPressed:
-              () => Navigator.pop(context, null), // Return null for manual back
+    if (_currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+          backgroundColor: _primaryColor,
         ),
-      ),
-      body: SingleChildScrollView(
-        // Allows scrolling if content overflows
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderImage(), // Display step indicator image
-            const SizedBox(height: 24.0),
-            _buildSubstanceChecklist(), // Build the checklist section
-            const SizedBox(height: 10),
-            Divider(color: _dividerColor, thickness: 1.0), // Separator
-            const SizedBox(height: 20),
+        body: const Center(
+          child: Text("User not available. Please log in again."),
+        ),
+      );
+    }
 
-            // *** CONDITIONAL DISPLAY LOGIC ***
-            // Only build the Yes/No questions ListView if _shouldShowYesNoQuestions is true
-            if (_shouldShowYesNoQuestions)
-              ListView.separated(
-                shrinkWrap: true, // Takes only needed vertical space
-                physics:
-                    const NeverScrollableScrollPhysics(), // Disables internal scrolling
-                itemCount: _yesNoQuestions.length,
-                itemBuilder: (context, index) {
-                  // Build each Yes/No question block
-                  return _buildYesNoQuestionBlock(index);
-                },
-                separatorBuilder: (context, index) {
-                  // Build dividers between questions
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: Divider(color: _dividerColor, thickness: 1.0),
-                  );
-                },
-              ),
-            // Display a message if 'Nothing' is selected (and thus questions are hidden)
-            if (!_shouldShowYesNoQuestions &&
-                _selectedSubstances['Nothing'] == true)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20.0),
-                child: Center(
-                  child: Text(
-                    "No further questions required.",
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontStyle: FontStyle.italic,
+    return WillPopScope(
+      onWillPop: () async {
+        print("AddictionScreen: Back button pressed.");
+        Navigator.pop(context, null); // Signal normal back navigation
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          // Using 'Step 6 of 6' for clarity
+          title: const Text('Substance Use (Step 6 of 6)'),
+          backgroundColor: _primaryColor,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, null), // Normal back
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderImage(),
+              const SizedBox(height: 24.0),
+              // Substance Selection Checklist
+              _buildSubstanceChecklist(),
+              const SizedBox(height: 10),
+              Divider(color: _dividerColor, thickness: 1.0),
+              const SizedBox(height: 20),
+
+              // Conditionally display Yes/No Questions
+              if (_shouldShowYesNoQuestions)
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _yesNoQuestions.length,
+                  itemBuilder:
+                      (context, index) => _buildYesNoQuestionBlock(index),
+                  separatorBuilder:
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Divider(color: _dividerColor, thickness: 1.0),
+                      ),
+                )
+              else if (_selectedSubstances['Nothing'] == true)
+                // Show message if "Nothing" is selected
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Center(
+                    child: Text(
+                      "No further questions required based on selection.",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                // Show message if nothing is selected yet (initial state)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Center(
+                    child: Text(
+                      "Select substances used above, or select 'Nothing'.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-            // *** END CONDITIONAL DISPLAY LOGIC ***
-            const SizedBox(height: 30.0),
-            _buildFinishButton(), // Build the finish button
-            const SizedBox(height: 12.0),
-            _buildSaveLink(), // Build the "save later" link
-            const SizedBox(height: 20.0), // Bottom padding
-          ],
+              const SizedBox(height: 30.0),
+              _buildFinishButton(), // Finish Assessment button
+              const SizedBox(height: 12.0),
+              _buildSaveLink(), // Save link
+              const SizedBox(height: 20.0),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // --- Widget Builder Helper Methods ---
-
   Widget _buildHeaderImage() {
     const String imagePath =
-        'assets/images/step6pic.png'; // Ensure this asset exists
+        'assets/images/step6pic.png'; // Ensure path is correct
     return Center(
       child: Image.asset(
         imagePath,
-        height: 60, // Adjust height as needed
+        height: 60,
         errorBuilder: (context, error, stackTrace) {
-          print("Error loading image '$imagePath': $error"); // Log error
-          // Provide a fallback UI element
+          print("Error loading image '$imagePath': $error");
           return Container(
             height: 60,
+            width: 100,
             color: _inactiveColor.withOpacity(0.3),
             child: const Center(
               child: Icon(Icons.image_not_supported, color: Colors.grey),
@@ -220,27 +465,27 @@ class _AddictionScreenState extends State<AddictionScreen> {
     );
   }
 
+  // Builds the checklist for selecting substances
   Widget _buildSubstanceChecklist() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Instruction text
         Text(
-          'Select the substances you have used in the past 12 months. (Check all that apply, or select "Nothing")',
+          'In the past 12 months, which of the following substances have you used? (Check all that apply, or select "Nothing")',
           style: TextStyle(
             fontSize: 16.0,
             fontWeight: FontWeight.w600,
             color: _questionTextColor,
-            height: 1.4, // Line spacing
+            height: 1.4,
           ),
         ),
         const SizedBox(height: 16.0),
-        // Generate checklist items from the map keys
+        // Generate checkbox for each substance
         ..._selectedSubstances.keys.map((String key) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 4.0),
             child: InkWell(
-              // Makes the whole row tappable for better UX
+              // Toggle selection on tap
               onTap:
                   () => _handleSubstanceSelection(
                     key,
@@ -251,26 +496,20 @@ class _AddictionScreenState extends State<AddictionScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Row(
                   children: [
-                    // Checkbox widget
                     SizedBox(
-                      width: 24, // Constrain size
+                      width: 24,
                       height: 24,
                       child: Checkbox(
                         value: _selectedSubstances[key],
                         onChanged:
                             (bool? value) =>
                                 _handleSubstanceSelection(key, value!),
-                        activeColor: _primaryColor, // Color when checked
-                        side: BorderSide(
-                          color: _inactiveColor,
-                          width: 1.5,
-                        ), // Border when unchecked
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap, // Reduce tap area
+                        activeColor: _primaryColor,
+                        side: BorderSide(color: _inactiveColor, width: 1.5),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Substance name and examples
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,7 +521,7 @@ class _AddictionScreenState extends State<AddictionScreen> {
                               color: _optionTextColor,
                             ),
                           ),
-                          // Display examples if available
+                          // Show examples if available
                           if (_substanceExamples[key]?.isNotEmpty ?? false)
                             Padding(
                               padding: const EdgeInsets.only(top: 2.0),
@@ -303,170 +542,156 @@ class _AddictionScreenState extends State<AddictionScreen> {
               ),
             ),
           );
-        }),
+        }).toList(), // Convert map iterator to list
       ],
     );
   }
 
-  // Handles the logic for substance selection, ensuring "Nothing" is exclusive
+  // Handles logic when a substance checkbox is tapped
   void _handleSubstanceSelection(String key, bool value) {
+    if (!mounted) return;
     setState(() {
       if (key == 'Nothing') {
-        // If 'Nothing' is checked (value is true)
+        // If "Nothing" is selected (value=true)
         if (value) {
           // Deselect all other substances
           _selectedSubstances.updateAll((k, v) => false);
-          // Set 'Nothing' to true
+          // Select "Nothing"
           _selectedSubstances['Nothing'] = true;
-          // Clear all Yes/No answers as they are not needed
+          // Reset Yes/No answers as they are no longer relevant
           _yesNoAnswers.fillRange(0, _yesNoAnswers.length, null);
         } else {
-          // If 'Nothing' is unchecked, just update its value
+          // If "Nothing" is deselected, just update its state
           _selectedSubstances['Nothing'] = false;
+          // Do not automatically select others
         }
       } else {
-        // If any other substance is checked/unchecked
+        // If any other substance is selected
         _selectedSubstances[key] = value;
-        // If this substance is being checked (value is true), ensure 'Nothing' is unchecked
+        // If this substance was selected (value=true)
         if (value) {
+          // Ensure "Nothing" is deselected
           _selectedSubstances['Nothing'] = false;
         }
       }
 
-      // After any change, check if Yes/No questions should still be shown.
-      // If not (e.g., all substances unchecked), clear the Yes/No answers.
-      if (!_shouldShowYesNoQuestions &&
-          _selectedSubstances['Nothing'] == false) {
+      // If, after changes, no substance (excluding Nothing) is selected,
+      // reset Yes/No answers. This handles deselecting the last substance.
+      if (!_shouldShowYesNoQuestions) {
         _yesNoAnswers.fillRange(0, _yesNoAnswers.length, null);
       }
     });
   }
 
-  // Builds a single Yes/No question block
+  // Builds a block for a single Yes/No DSM criteria question
   Widget _buildYesNoQuestionBlock(int index) {
-    // Get question data from the list
     final questionData = _yesNoQuestions[index];
     final String questionText = questionData['question'];
     final int questionId = questionData['id'];
-    // Calculate the corresponding index in the _yesNoAnswers list (0-based)
+    // Index in the _yesNoAnswers list (0-based)
     final answerIndex = questionId - 1;
 
-    // Basic validation for index bounds
     if (answerIndex < 0 || answerIndex >= _yesNoAnswers.length) {
       print(
-        "Error: Invalid answer index $answerIndex for Y/N question ID: $questionId",
+        "Error: Invalid answer index $answerIndex for Yes/No QID $questionId",
       );
-      return const SizedBox.shrink(); // Return empty widget on error
+      return const SizedBox.shrink();
     }
 
-    // Determine the text to replace '[substance]' placeholder
+    // Determine placeholder text based on selections
     List<String> selected =
         _selectedSubstances.entries
-            .where(
-              (e) => e.key != 'Nothing' && e.value == true,
-            ) // Filter selected substances (excluding 'Nothing')
-            .map((e) => e.key) // Get their names
+            .where((e) => e.key != 'Nothing' && e.value == true)
+            .map(
+              (e) => e.key.split(' ')[0],
+            ) // Use first word for brevity maybe?
             .toList();
-
-    String substancePlaceholder;
+    String substancePlaceholder = "your substance use"; // Default
     if (selected.length == 1) {
-      substancePlaceholder =
-          "your use of ${selected[0]}"; // Specific substance if only one selected
-    } else if (selected.isEmpty) {
-      substancePlaceholder =
-          "substance use"; // Fallback (shouldn't happen if questions are shown)
-    } else {
-      substancePlaceholder =
-          "the substance(s) you selected"; // Generic if multiple selected
+      substancePlaceholder = "your ${selected[0]} use";
+    } else if (selected.length > 1) {
+      substancePlaceholder = "your use of the selected substance(s)";
     }
 
-    // Build the question text and options
+    // Replace placeholder in question text (simple replacement)
+    // String formattedQuestion = questionText.replaceAll('[substance]', substancePlaceholder);
+    // Or simply ask generally if placeholder logic is complex/unreliable:
+    String formattedQuestion = questionText; // Using the general question text
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(
-            right: 8.0,
-          ), // Avoid text touching edge
+          padding: const EdgeInsets.only(right: 8.0),
           child: Text(
-            // Replace the placeholder in the question string
-            questionText.replaceAll('[substance]', substancePlaceholder),
+            formattedQuestion, // Use the (potentially formatted) question text
             style: TextStyle(
               fontSize: 16.0,
               fontWeight: FontWeight.w600,
               color: _questionTextColor,
-              height: 1.4, // Line spacing
+              height: 1.4,
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // Build the 'Yes' and 'No' radio button options
+        // Build Yes/No options for this question index
         _buildYesNoOptions(answerIndex, ['Yes', 'No']),
       ],
     );
   }
 
-  // Builds the Yes/No radio button row for a given question index
+  // Builds horizontal Yes/No radio options for the DSM criteria
   Widget _buildYesNoOptions(int answerIndex, List<String> options) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.start, // Align options to the left
+      mainAxisAlignment: MainAxisAlignment.start,
       children: List.generate(options.length, (optionIndex) {
-        // Determine the boolean value this option represents (Yes=true, No=false)
-        final bool optionRepresentsValue = optionIndex == 0;
-        // Check if this option is currently selected
+        // Yes = true (index 0), No = false (index 1)
+        final bool optionRepresentsValue = (optionIndex == 0);
+        // Check if the answer in state matches this option's boolean value
         final bool isSelected =
             _yesNoAnswers[answerIndex] == optionRepresentsValue;
 
         return Padding(
-          // Add spacing between 'Yes' and 'No' options
           padding: EdgeInsets.only(right: optionIndex == 0 ? 30.0 : 0),
           child: InkWell(
-            // Make option tappable
             onTap: () {
+              if (!mounted) return;
               setState(() {
-                // Update the answer state for this question index
+                // Store true for Yes, false for No
                 _yesNoAnswers[answerIndex] = optionRepresentsValue;
               });
             },
-            borderRadius: BorderRadius.circular(
-              8,
-            ), // Rounded corners for tap effect
+            borderRadius: BorderRadius.circular(8),
             child: Row(
-              mainAxisSize: MainAxisSize.min, // Row takes minimum space
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Custom radio button appearance
+                // Custom radio button
                 Container(
                   width: 22.0,
                   height: 22.0,
-                  margin: const EdgeInsets.only(
-                    right: 8.0,
-                  ), // Space between circle and text
+                  margin: const EdgeInsets.only(right: 8.0),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color:
-                          isSelected
-                              ? _borderColor
-                              : _inactiveColor, // Border color changes if selected
+                      color: isSelected ? _borderColor : _inactiveColor,
                       width: 2.0,
                     ),
                   ),
-                  // Show inner circle if selected
                   child:
                       isSelected
                           ? Center(
                             child: Container(
-                              width: 10.0, // Size of inner circle
+                              width: 10.0,
                               height: 10.0,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: _borderColor, // Color of inner circle
+                                color: _borderColor,
                               ),
                             ),
                           )
-                          : null, // No inner circle if not selected
+                          : null,
                 ),
-                // Option text ('Yes' or 'No')
+                // Option Text (Yes/No)
                 Text(
                   options[optionIndex],
                   style: TextStyle(fontSize: 15.0, color: _optionTextColor),
@@ -483,9 +708,11 @@ class _AddictionScreenState extends State<AddictionScreen> {
   Widget _buildFinishButton() {
     return Center(
       child: ElevatedButton(
-        onPressed: () {
-          // --- Validation Logic ---
-          // 1. Check if ANYTHING is selected (either a substance or 'Nothing')
+        onPressed: () async {
+          // Make async
+          if (!mounted) return;
+          // --- Validation ---
+          // 1. Check if at least one substance option (including "Nothing") is selected
           bool anySubstanceOptionSelected = _selectedSubstances.containsValue(
             true,
           );
@@ -496,92 +723,89 @@ class _AddictionScreenState extends State<AddictionScreen> {
                   'Please select the substance(s) you used, or select "Nothing".',
                 ),
                 backgroundColor: Colors.orangeAccent,
+                duration: Duration(seconds: 3),
               ),
             );
-            return; // Stop execution
+            return;
           }
 
-          // 2. Check if Yes/No questions need to be answered and if they are
-          bool allYesNoAnswered =
-              true; // Default to true (handles 'Nothing' case)
+          // 2. If substances (not "Nothing") were selected, check if all Yes/No questions are answered
+          bool allYesNoAnswered = true; // Assume true if questions not shown
           if (_shouldShowYesNoQuestions) {
-            // Only validate if questions are visible
-            allYesNoAnswered =
-                !_yesNoAnswers.contains(
-                  null,
-                ); // Check if any answer is still null
+            allYesNoAnswered = !_yesNoAnswers.contains(null); // Check for nulls
             if (!allYesNoAnswered) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Please answer all Yes/No questions (Q1-Q11).'),
                   backgroundColor: Colors.orangeAccent,
+                  duration: Duration(seconds: 3),
                 ),
               );
-              return; // Stop execution
+              return;
             }
           }
 
-          // --- Data Preparation & Navigation ---
-          // If all validations pass:
+          // --- Completion ---
+          // Clear the partial save for this final step
+          await _clearPartialSaveFromFirestore();
+
+          // Prepare final results to return
           final results = {
-            'selectedSubstances': Map<String, bool>.from(
-              _selectedSubstances,
-            ), // Send a copy
-            // Send the answers list ONLY if questions were shown, otherwise send empty list
+            'selectedSubstances': Map<String, bool>.from(_selectedSubstances),
+            // Only include Yes/No answers if they were relevant
             'yesNoAnswers':
                 _shouldShowYesNoQuestions
-                    ? List<bool?>.from(_yesNoAnswers)
-                    : <bool?>[],
+                    ? List<bool?>.from(
+                      _yesNoAnswers,
+                    ) // Return copy of bool list
+                    : <bool?>[], // Return empty list if not applicable
           };
 
-          print(
-            'Step 6 (Addiction) Results: $results',
-          ); // Log results for debugging
-          Navigator.pop(context, results); // Pop screen and return results map
+          print('Step 6 (Addiction) Results: $results');
+          Navigator.pop(context, results); // Pop with final combined results
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryColor, // Button background color
-          foregroundColor: Colors.white, // Button text color
+          backgroundColor: _primaryColor,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25.0), // Rounded corners
+            borderRadius: BorderRadius.circular(25.0),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 60.0,
-            vertical: 14.0,
-          ), // Button padding
+          // Wider button for "Finish"
+          padding: const EdgeInsets.symmetric(horizontal: 60.0, vertical: 14.0),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          elevation: 2, // Subtle shadow
+          elevation: 2,
         ),
         child: const Text('Finish Assessment'),
       ),
     );
   }
 
-  // Builds the "Save and continue later" link
   Widget _buildSaveLink() {
     return Center(
       child: InkWell(
-        onTap: () {
-          print('Save and continue later tapped');
-          // Placeholder for save functionality
-          // TODO: Implement actual save logic if required
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Save functionality not yet implemented.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          // Optionally pop or navigate elsewhere after saving attempt
-          // Navigator.pop(context, null); // Example: pop after attempting save
-        },
-        child: Text(
-          'Save and continue later >>',
-          style: TextStyle(
-            fontSize: 14,
-            color: _primaryColor,
-            decoration: TextDecoration.underline, // Underline to indicate link
-            decorationColor: _primaryColor, // Match underline color
-          ),
+        onTap: _isSaving ? null : _saveStateToFirestore,
+        borderRadius: BorderRadius.circular(8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child:
+              _isSaving
+                  ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      color: _primaryColor, // <-- CORRECTED,
+                    ),
+                  )
+                  : Text(
+                    'Save and continue later >>',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _primaryColor,
+                      decoration: TextDecoration.underline,
+                      decorationColor: _primaryColor,
+                    ),
+                  ),
         ),
       ),
     );

@@ -1,6 +1,10 @@
 // lib/profile_screen.dart
 import 'package:flutter/material.dart';
-import 'editProfileScreen.dart'; // <-- Import the new screen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // For date formatting
+
+import 'editProfileScreen.dart'; // Your existing import
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,7 +18,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- Define Colors (keep as is) ---
   static const Color headerColor = Color(0xFF5A9AB8);
-  // ... other colors
   static const Color primaryContentColor = Color(0xFF003366);
   static const Color secondaryContentColor = Color(0xFF5A7A9E);
   static const Color headerTextColor = Colors.white;
@@ -25,47 +28,118 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color bottomNavSelectedColor = Colors.white;
   static const Color bottomNavUnselectedColor = Color(0xFFADD8E6);
 
-  // --- Profile Data State Variables (Make them updatable) ---
-  // Use late if initializing in initState or provide defaults
+  // --- Profile Data State Variables ---
   late String profileName;
   late String profileId;
-  late List<String>
-  profileInfo; // List: [Gender, BirthDate, Phone, Email, Specialty]
-  // late String doctorName; // Removed, assuming this is doctor's own profile
+  late List<String> profileInfo; // [Gender, BirthDate, Phone, Email, Specialty]
+
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  // Firebase Instances
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    // Initialize with dummy data (replace with actual data loading later)
-    _loadProfileData();
+    profileInfo = List.filled(5, ""); // Initialize with empty strings
+    _fetchProfileData();
   }
 
-  void _loadProfileData() {
-    // Simulate loading data
+  Future<void> _fetchProfileData() async {
+    if (!mounted) return;
     setState(() {
-      profileName = "Dr. Evelyn Reed";
-      profileId = "#DR12345";
-      profileInfo = [
-        "Female", // Gender (Index 0)
-        "11/07/1980", // BirthDate (Index 1) - Use consistent format like dd/MM/yyyy
-        "079-123-4567", // Phone (Index 2)
-        "e.reed.clinic@mail.com", // Email (Index 3)
-        "Psychiatrist", // Specialty (Index 4)
-      ];
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "User not logged in. Please log in again.";
+          // Optionally, navigate to login screen
+          // Navigator.of(context).pushReplacementNamed('/login');
+        });
+      }
+      return;
+    }
+
+    try {
+      DocumentSnapshot doctorDoc =
+          await _firestore.collection('doctors').doc(currentUser.uid).get();
+
+      if (doctorDoc.exists && mounted) {
+        Map<String, dynamic> data = doctorDoc.data() as Map<String, dynamic>;
+
+        // Format birthDate if it exists and is a Timestamp
+        String birthDateStr = "N/A";
+        if (data['birthDate'] != null && data['birthDate'] is Timestamp) {
+          Timestamp dobTimestamp = data['birthDate'];
+          birthDateStr = DateFormat('dd/MM/yyyy').format(dobTimestamp.toDate());
+        } else if (data['birthDate'] is String) {
+          // If it was already stored as a string (less ideal)
+          birthDateStr = data['birthDate'];
+        }
+
+        setState(() {
+          profileName =
+              data['fullName'] ??
+              "${data['firstName']} ${data['lastName']}" ??
+              "N/A";
+          profileId = currentUser.uid; // Or data['uid'] if you prefer
+          profileInfo = [
+            data['gender'] ?? "N/A",
+            birthDateStr,
+            data['phoneNumber'] ?? "N/A",
+            data['email'] ?? currentUser.email ?? "N/A",
+            data['specialty'] ??
+                "Not Specified", // Assuming 'specialty' field exists
+          ];
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              "Profile data not found. Please complete your profile.";
+          // Fallback to some default or allow editing
+          profileName = "Dr. User";
+          profileId = currentUser.uid;
+          profileInfo = [
+            "N/A",
+            "N/A",
+            "N/A",
+            currentUser.email ?? "N/A",
+            "Not Specified",
+          ];
+        });
+      }
+    } catch (e) {
+      print("Error fetching profile data: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Error loading profile: ${e.toString()}";
+        });
+      }
+    }
   }
 
   // --- Navigation to Edit Profile (UPDATED) ---
   void _navigateToEditProfile() async {
-    // Prepare current data to pass
+    if (_isLoading) return; // Don't navigate if data isn't loaded
+
     final currentData = {
       'name': profileName,
+      'id': profileId, // Pass ID for reference, though usually not editable
       'gender': profileInfo[0],
-      'birthDate': profileInfo[1],
+      'birthDate': profileInfo[1], // Pass as dd/MM/yyyy string
       'phone': profileInfo[2],
       'email': profileInfo[3],
       'specialty': profileInfo[4],
-      // ID is usually not editable
     };
 
     final result = await Navigator.push<Map<String, dynamic>>(
@@ -82,20 +156,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
         profileName = result['name'] ?? profileName;
         profileInfo = [
           result['gender'] ?? profileInfo[0],
-          result['birthDate'] ??
-              profileInfo[1], // Ensure date format consistency
+          result['birthDate'] ?? profileInfo[1],
           result['phone'] ?? profileInfo[2],
           result['email'] ?? profileInfo[3],
           result['specialty'] ?? profileInfo[4],
         ];
       });
+
+      // Persist the updated profile data to Firebase
+      await _updateProfileInFirebase(result);
+    }
+  }
+
+  Future<void> _updateProfileInFirebase(
+    Map<String, dynamic> updatedData,
+  ) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated successfully!'),
+          content: Text('Error: Not logged in. Cannot save profile.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Prepare data for Firestore update
+      Map<String, dynamic> dataToUpdate = {
+        'fullName': updatedData['name'],
+        'gender': updatedData['gender'],
+        'phoneNumber': updatedData['phone'],
+        'email':
+            updatedData['email'], // Note: Email in Auth might need separate update if changed
+        'specialty': updatedData['specialty'],
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Handle birthDate: convert String "dd/MM/yyyy" back to Timestamp
+      if (updatedData['birthDate'] != null &&
+          updatedData['birthDate'] is String) {
+        try {
+          DateTime parsedDate = DateFormat(
+            'dd/MM/yyyy',
+          ).parse(updatedData['birthDate']);
+          dataToUpdate['birthDate'] = Timestamp.fromDate(parsedDate);
+        } catch (e) {
+          print("Error parsing date for update: $e");
+          // Handle error or skip updating date if format is wrong
+        }
+      }
+
+      await _firestore
+          .collection('doctors')
+          .doc(currentUser.uid)
+          .update(dataToUpdate);
+
+      // If email was changed and you want to update Firebase Auth email:
+      if (currentUser.email != updatedData['email']) {
+        // This requires re-authentication or recent login for security.
+        // await currentUser.updateEmail(updatedData['email']);
+        // Consider the implications and Firebase security rules for email updates.
+        print(
+          "Email changed. Firebase Auth email update needs careful handling.",
+        );
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully in Firebase!'),
           backgroundColor: Colors.green,
         ),
       );
-      // TODO: Persist the updated profile data
+    } catch (e) {
+      print("Error updating profile in Firebase: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        // Optionally, revert local state changes if Firebase update fails
+        // await _fetchProfileData(); // Re-fetch to ensure consistency
+      }
     }
   }
 
@@ -104,7 +249,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required List<String> details,
   }) {
-    /* ... same as before ... */
     final theme = Theme.of(context);
     final effectivePrimaryColor =
         theme.brightness == Brightness.dark
@@ -115,7 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? Colors.white54
             : secondaryContentColor;
     return Padding(
-      /* ... structure ... */
       padding: const EdgeInsets.symmetric(vertical: 15.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +296,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- Bottom Nav Tap Handler (Keep as is) ---
   void _onItemTapped(int index) {
-    /* ... same as before ... */
     if (index == _screenIndex) return;
     switch (index) {
       case 0:
@@ -166,7 +308,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushReplacementNamed(context, '/notes');
         break;
       case 3:
-        break; // Already here
+        // Already here
+        break;
     }
   }
 
@@ -180,17 +323,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final effectiveHeaderTextColor =
         theme.brightness == Brightness.dark ? Colors.white : headerTextColor;
 
-    // Check if profileInfo is initialized before building
-    if (profileInfo.isEmpty) {
-      // Show a loading indicator or placeholder while data loads
+    if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text("Profile")),
+        appBar: AppBar(
+          title: const Text("Profile"),
+          backgroundColor: headerColor,
+          iconTheme: IconThemeData(color: effectiveHeaderTextColor),
+          titleTextStyle: TextStyle(
+            color: effectiveHeaderTextColor,
+            fontSize: 20,
+          ),
+        ),
         body: const Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: _buildBottomNavBar(), // Keep consistent UI
       );
     }
 
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Profile"),
+          backgroundColor: headerColor,
+          iconTheme: IconThemeData(color: effectiveHeaderTextColor),
+          titleTextStyle: TextStyle(
+            color: effectiveHeaderTextColor,
+            fontSize: 20,
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _fetchProfileData,
+                  child: const Text("Retry"),
+                ),
+              ],
+            ),
+          ),
+        ),
+        bottomNavigationBar: _buildBottomNavBar(), // Keep consistent UI
+      );
+    }
+
+    // --- Main Profile UI ---
     return Scaffold(
-      backgroundColor: headerColor,
+      backgroundColor: headerColor, // Header area background
       body: Stack(
         children: [
           // --- Header (UPDATED Edit Button Action) ---
@@ -198,23 +384,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             top: 0,
             left: 0,
             right: 0,
-            height: 200,
+            height: 200, // Adjust as needed
             child: Container(
               color: headerColor,
               child: SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.only(
-                    top: 30.0,
+                    top: 30.0, // Adjusted for status bar
                     left: 25.0,
                     right: 25.0,
-                    bottom: 35,
+                    bottom: 35, // Space before content overlap
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Column(
-                        /* ... Profile Title ... */
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 10),
@@ -230,8 +415,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(width: 10),
                               InkWell(
-                                onTap:
-                                    _navigateToEditProfile, // <-- Call the updated navigation method
+                                onTap: _navigateToEditProfile,
                                 child: Row(
                                   children: [
                                     Icon(
@@ -255,7 +439,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       const Padding(
-                        /* ... Avatar ... */
                         padding: EdgeInsets.only(top: 0),
                         child: CircleAvatar(
                           radius: 45,
@@ -278,9 +461,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // --- Content Area (Uses state variables) ---
+          // --- Content Area ---
           Positioned.fill(
-            top: 165,
+            top: 165, // Start below the visual header part
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
@@ -293,27 +476,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   top: 30.0,
                   left: 25.0,
                   right: 25.0,
-                  bottom: 90.0,
+                  bottom: 90.0, // Space for bottom nav bar
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name (Uses state variable)
                     Text(
-                      profileName, // Uses state variable
+                      profileName,
                       style: TextStyle(
                         color: effectivePrimaryColor,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // Display Specialty below name
                     if (profileInfo.length > 4 &&
-                        profileInfo[4].isNotEmpty) // Check if specialty exists
+                        profileInfo[4].isNotEmpty &&
+                        profileInfo[4] != "Not Specified")
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
-                          profileInfo[4], // Specialty from state
+                          profileInfo[4], // Specialty
                           style: TextStyle(
                             color:
                                 Theme.of(context).textTheme.bodyLarge?.color
@@ -325,25 +507,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     const SizedBox(height: 15),
 
-                    // ID Section (Uses state variable)
                     _buildInfoSection(label: "Doctor ID", details: [profileId]),
 
-                    // Information Section (Uses state variable, excludes specialty if shown above)
                     _buildInfoSection(
                       label: "Contact Information",
                       details: [
-                        profileInfo[0], // Gender
-                        profileInfo[1], // BirthDate
-                        profileInfo[2], // Phone
-                        profileInfo[3], // Email
-                        // Specialty is removed from here if shown under name
+                        "Gender: ${profileInfo[0]}",
+                        "Birth Date: ${profileInfo[1]}",
+                        "Phone: ${profileInfo[2]}",
+                        "Email: ${profileInfo[3]}",
                       ],
                     ),
 
-                    // --- Buttons (Keep as is, or adjust logic) ---
                     const SizedBox(height: 30),
                     ElevatedButton.icon(
-                      /* ... Settings Button ... */
                       icon: const Icon(Icons.settings_outlined),
                       label: const Text('Settings'),
                       style: ElevatedButton.styleFrom(
@@ -360,7 +537,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 15),
                     ElevatedButton.icon(
-                      /* ... Logout Button ... */
                       icon: const Icon(Icons.logout, color: Colors.redAccent),
                       label: const Text(
                         'Log Out',
@@ -375,14 +551,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                       ),
-                      onPressed: () {
-                        print('Log out tapped');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Logout not implemented yet.'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
+                      onPressed: () async {
+                        // Implement actual logout
+                        await _auth.signOut();
+                        if (mounted) {
+                          // Navigate to login screen and remove all previous routes
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/login',
+                            (Route<dynamic> route) => false,
+                          );
+                        }
                       },
                     ),
                     const SizedBox(height: 20),
@@ -393,42 +571,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      // --- Bottom Navigation Bar (Keep as is) ---
-      bottomNavigationBar: Container(
-        /* ... Bottom nav content ... */
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.groups_outlined),
-              label: 'Patients',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_outlined),
-              label: 'Notes',
-            ),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
-          currentIndex: _screenIndex,
-          onTap: _onItemTapped,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: bottomNavColor,
-          selectedItemColor: bottomNavSelectedColor,
-          unselectedItemColor: bottomNavUnselectedColor,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          selectedFontSize: 1,
-          unselectedFontSize: 1,
-          elevation: 5,
-          selectedIconTheme: const IconThemeData(size: 28),
-          unselectedIconTheme: const IconThemeData(size: 24),
-        ),
+      bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  // Helper for Bottom Nav Bar to reduce duplication in build method
+  Widget _buildBottomNavBar() {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
+      ),
+      child: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups_outlined),
+            label: 'Patients',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            label: 'Notes',
+          ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+        ],
+        currentIndex: _screenIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: bottomNavColor,
+        selectedItemColor: bottomNavSelectedColor,
+        unselectedItemColor: bottomNavUnselectedColor,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        selectedFontSize: 1,
+        unselectedFontSize: 1,
+        elevation: 5,
+        selectedIconTheme: const IconThemeData(size: 28),
+        unselectedIconTheme: const IconThemeData(size: 24),
       ),
     );
   }

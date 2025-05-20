@@ -1,22 +1,53 @@
+// lib/screens/DoctorDirectory/DoctorDirectoryScreen.dart
 import 'package:flutter/material.dart';
+// import 'package:firebase_auth/firebase_auth.dart'; // No longer needed if not adding doctors
+// Adjust the import path if your service file is located elsewhere
+import '../../services/mongo_api_service.dart';
 
-// Data model for a doctor (optional but good practice)
+// Updated Doctor Data Model
 class Doctor {
-  final String imagePath;
+  final String id; // From MongoDB _id
+  final String? imageUrl; // Will be a URL from backend (nullable)
   final String name;
   final String specialty;
-  final String address;
-  final String phone;
-  final int price;
+  final String clinicAddress; // Matches backend 'clinicAddress'
+  final String phoneNumber;   // Matches backend 'phoneNumber'
+  final int? price; // Can be nullable if not always present
 
   Doctor({
-    required this.imagePath,
+    required this.id,
+    this.imageUrl,
     required this.name,
     required this.specialty,
-    required this.address,
-    required this.phone,
-    required this.price,
+    required this.clinicAddress,
+    required this.phoneNumber,
+    this.price,
   });
+
+  factory Doctor.fromJson(Map<String, dynamic> json) {
+    return Doctor(
+      id: json['_id'] as String,
+      name: json['name'] as String? ?? 'N/A',
+      specialty: json['specialty'] as String? ?? 'N/A',
+      clinicAddress: json['clinicAddress'] as String? ?? 'N/A',
+      phoneNumber: json['phoneNumber'] as String? ?? 'N/A',
+      imageUrl: json['imageUrl'] as String?,
+      price: json['price'] as int?,
+    );
+  }
+
+  // toJsonForCreation might still be useful if you plan to add doctors via other means later
+  // or if other parts of the app use it. If not, it can also be removed from this model.
+  Map<String, dynamic> toJsonForCreation() {
+    return {
+      'name': name,
+      'specialty': specialty,
+      'clinicAddress': clinicAddress,
+      'phoneNumber': phoneNumber,
+      if (imageUrl != null && imageUrl!.isNotEmpty) 'imageUrl': imageUrl,
+      if (price != null) 'price': price,
+    };
+  }
 }
 
 class DoctorDirectoryScreen extends StatefulWidget {
@@ -27,97 +58,77 @@ class DoctorDirectoryScreen extends StatefulWidget {
 }
 
 class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
-  // --- Search State ---
   final TextEditingController _searchController = TextEditingController();
-  List<Doctor> _filteredDoctors = []; // List to hold filtered results
   String _searchQuery = '';
 
-  // --- Doctor Data (Original Full List) ---
-  // Make this final as it shouldn't change after initialization
-  final List<Doctor> _allDoctors = [
-    Doctor(
-      imagePath: 'assets/images/mousapic.png', // Ensure these paths are correct
-      name: 'Mousa Al-Atabi',
-      specialty: 'Adult Psychiatry, Addiction',
-      address: 'Amman, Mkablein, Al-Sakhrah Al-Mosharafa Street',
-      phone: '079-XXX-XXXX',
-      price: 50,
-    ),
-    Doctor(
-      imagePath: 'assets/images/larapic.png', // Ensure these paths are correct
-      name: 'Lara Alqam',
-      specialty: 'Adult Psychiatry, Addiction',
-      address: 'Amman, Fifth Circle, Sulaiman Al-Hadidi Street',
-      phone: '079-XXX-XXXX',
-      price: 60,
-    ),
-    Doctor(
-      imagePath: 'assets/images/aseelpic.png', // Ensure these paths are correct
-      name: 'Aseel AlDwikat',
-      specialty: 'Family Counseling',
-      address: 'Amman, Khalda, Wasfi altal street',
-      phone: '079-XXX-XXXX',
-      price: 30,
-    ),
-    Doctor(
-      imagePath: 'assets/images/another_doc.png', // Example: Add more doctors
-      name: 'Dr. Test Example',
-      specialty: 'General Psychiatry',
-      address: 'Irbid, University Street',
-      phone: '077-XXX-XXXX',
-      price: 45,
-    ),
-  ];
+  List<Doctor> _allDoctors = [];
+  List<Doctor> _filteredDoctors = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  final MongoApiService _apiService = MongoApiService();
 
   @override
   void initState() {
     super.initState();
-    // Initially, show all doctors
-    _filteredDoctors = _allDoctors;
-    // Add listener to controller for real-time search updates
+    _fetchDoctors();
     _searchController.addListener(_performSearch);
   }
 
   @override
   void dispose() {
-    // Dispose the controller when the widget is removed from the widget tree
     _searchController.removeListener(_performSearch);
     _searchController.dispose();
     super.dispose();
   }
 
-  // --- Search Logic ---
+  Future<void> _fetchDoctors() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final doctors = await _apiService.getDoctors();
+      if (!mounted) return;
+      setState(() {
+        _allDoctors = doctors;
+        _filteredDoctors = doctors;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print("Error in _fetchDoctors: $e");
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst("Exception: ", "");
+        _isLoading = false;
+      });
+    }
+  }
+
   void _performSearch() {
+    if (!mounted) return;
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _searchQuery =
-          query; // Update the state variable (optional, but can be useful)
+      _searchQuery = query;
       if (_searchQuery.isEmpty) {
-        // If search is empty, show all doctors
         _filteredDoctors = _allDoctors;
       } else {
-        // Otherwise, filter the list
-        _filteredDoctors =
-            _allDoctors.where((doctor) {
-              final nameLower = doctor.name.toLowerCase();
-              final specialtyLower = doctor.specialty.toLowerCase();
-              final addressLower = doctor.address.toLowerCase();
-              final priceString =
-                  doctor.price.toString(); // Search price as string
+        _filteredDoctors = _allDoctors.where((doctor) {
+          final nameLower = doctor.name.toLowerCase();
+          final specialtyLower = doctor.specialty.toLowerCase();
+          final addressLower = doctor.clinicAddress.toLowerCase();
+          final priceString = doctor.price?.toString() ?? '';
 
-              // Check if query matches any relevant field
-              return nameLower.contains(_searchQuery) ||
-                  specialtyLower.contains(_searchQuery) ||
-                  addressLower.contains(_searchQuery) ||
-                  priceString.contains(
-                    _searchQuery,
-                  ); // Check if price contains the query digits
-            }).toList(); // Convert the Iterable result back to a List
+          return nameLower.contains(_searchQuery) ||
+              specialtyLower.contains(_searchQuery) ||
+              addressLower.contains(_searchQuery) ||
+              (priceString.isNotEmpty && priceString.contains(_searchQuery));
+        }).toList();
       }
     });
   }
 
-  // --- Define Colors ---
   final Color headerColor = const Color(0xFF5588A4);
   final Color titleColor = const Color(0xFF276181);
   final Color primaryTextColor = const Color(0xFF276181);
@@ -131,6 +142,13 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
   final Color bottomAppBarBg = const Color(0xFF276181);
   final Color bottomAppBarIconColor = const Color(0xFF5E94FF);
 
+  // --- _showAddDoctorDialog method can be removed if no longer needed ---
+  /*
+  void _showAddDoctorDialog() {
+    // ... (implementation was here) ...
+  }
+  */
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -141,44 +159,68 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
         children: [
           _buildHeader(screenHeight),
           Expanded(
-            child: SingleChildScrollView(
-              // Keep the list scrollable if it exceeds screen height
-              child: Column(
-                // Make the column take minimum space vertically initially
-                // mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 15),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Text(
-                      'Find your Doctor',
-                      style: TextStyle(
-                        fontFamily:
-                            'Times New Roman', // Or 'Serif' or your specific font
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: titleColor,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red.shade700, size: 50),
+                              const SizedBox(height: 10),
+                              Text('Error: $_errorMessage', textAlign: TextAlign.center, style: TextStyle(color: Colors.red.shade700, fontSize: 16)),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: _fetchDoctors,
+                                style: ElevatedButton.styleFrom(backgroundColor: primaryTextColor),
+                                child: const Text('Retry Fetching Doctors', style: TextStyle(color: Colors.white))
+                              )
+                            ],
+                          ),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 15),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                              child: Text(
+                                'Find your Doctor',
+                                style: TextStyle(
+                                  fontFamily: 'Times New Roman',
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: titleColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            _buildSearchBar(),
+                            const SizedBox(height: 20),
+                            _buildDoctorList(),
+                            // const SizedBox(height: 70), // Space for FAB can be removed or adjusted
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  _buildSearchBar(), // Search bar triggers filtering
-                  const SizedBox(height: 20),
-                  _buildDoctorList(), // List displays filtered results
-                ],
-              ),
-            ),
           ),
         ],
       ),
+      // --- REMOVED FloatingActionButton ---
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: _showAddDoctorDialog,
+      //   tooltip: 'Add Doctor',
+      //   backgroundColor: primaryTextColor,
+      //   child: const Icon(Icons.add, color: Colors.white),
+      // ),
+      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  // --- Helper Widgets ---
-
   Widget _buildHeader(double screenHeight) {
-    // (Header code remains the same)
     return ClipPath(
       clipper: CurvedHeaderClipper(),
       child: Container(
@@ -191,14 +233,9 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
             child: Padding(
               padding: EdgeInsets.only(top: screenHeight * 0.04),
               child: Image.asset(
-                'assets/images/directorypic.png', // Ensure path is correct
+                'assets/images/directorypic.png',
                 height: screenHeight * 0.15,
-                errorBuilder:
-                    (context, error, stackTrace) => const Icon(
-                      Icons.error_outline,
-                      color: Colors.white70,
-                      size: 50,
-                    ),
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.error_outline, color: Colors.white70, size: 50),
               ),
             ),
           ),
@@ -215,34 +252,24 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
         decoration: BoxDecoration(
           color: searchBarBg,
           borderRadius: BorderRadius.circular(30.0),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor.withOpacity(0.1),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: shadowColor.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 2))],
         ),
         child: TextField(
-          controller: _searchController, // Assign the controller
-          // onChanged: (query) => _performSearch(query), // Alternative: Use onChanged directly
+          controller: _searchController,
           decoration: InputDecoration(
             hintText: 'name , address , specialty , price , ......',
             hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-            border: InputBorder.none, // Removes the underline
+            border: InputBorder.none,
             icon: Icon(Icons.search, color: searchBarIconColor),
-            // Add a clear button if the search bar has text
-            suffixIcon:
-                _searchQuery.isNotEmpty
-                    ? IconButton(
-                      icon: Icon(Icons.clear, color: searchBarIconColor),
-                      onPressed: () {
-                        _searchController.clear(); // Clears the text field
-                        // _performSearch is called automatically by the listener
-                      },
-                      tooltip: 'Clear search',
-                    )
-                    : null, // Show nothing if search bar is empty
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: Icon(Icons.clear, color: searchBarIconColor),
+                    onPressed: () {
+                      _searchController.clear();
+                    },
+                    tooltip: 'Clear search',
+                  )
+                : null,
           ),
         ),
       ),
@@ -250,26 +277,18 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
   }
 
   Widget _buildDoctorList() {
-    // Display message if no doctors match the search
-    if (_filteredDoctors.isEmpty && _searchQuery.isNotEmpty) {
+    if (_filteredDoctors.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
         child: Center(
           child: Text(
-            'No doctors found matching "$_searchQuery"',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: secondaryTextColor),
-          ),
-        ),
-      );
-    }
-    // Display message if the initial list is somehow empty
-    else if (_filteredDoctors.isEmpty && _searchQuery.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 20.0),
-        child: Center(
-          child: Text(
-            'No doctors available.',
+            _isLoading
+                ? 'Loading doctors...'
+                : _searchQuery.isNotEmpty
+                    ? 'No doctors found matching "$_searchQuery"'
+                    : (_allDoctors.isEmpty && !_isLoading)
+                        ? 'No doctors available in the directory at the moment.'
+                        : 'No doctors match your current criteria.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, color: secondaryTextColor),
           ),
@@ -277,17 +296,13 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
       );
     }
 
-    // Build the list using the FILTERED doctors
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
       child: ListView.builder(
-        // Use the filtered list count
         itemCount: _filteredDoctors.length,
-        shrinkWrap: true, // Important inside a Column/SingleChildScrollView
-        physics:
-            const NeverScrollableScrollPhysics(), // List shouldn't scroll independently here
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) {
-          // Use the filtered list data
           return _buildDoctorCard(_filteredDoctors[index]);
         },
       ),
@@ -295,7 +310,6 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
   }
 
   Widget _buildDoctorCard(Doctor doctor) {
-    // (Doctor card code remains the same)
     return Card(
       margin: const EdgeInsets.only(bottom: 15.0),
       elevation: 3.0,
@@ -305,39 +319,48 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10.0),
-              child: Image.asset(
-                doctor.imagePath, // Ensure path is correct
-                width: 80,
-                height: 100,
-                fit: BoxFit.cover,
-                errorBuilder:
-                    (context, error, stackTrace) => Container(
+              child: doctor.imageUrl != null && doctor.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      doctor.imageUrl!,
                       width: 80,
                       height: 100,
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.grey,
-                        size: 40,
-                      ),
-                    ),
-              ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _imageErrorPlaceholder(width: 80, height: 100),
+                      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 80,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : _imageErrorPlaceholder(width: 80, height: 100),
             ),
             const SizedBox(width: 15),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     doctor.name,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryTextColor),
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -346,24 +369,20 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    doctor.address,
+                    doctor.clinicAddress,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, color: tertiaryTextColor),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    doctor.phone,
+                    doctor.phoneNumber,
                     style: TextStyle(fontSize: 11, color: tertiaryTextColor),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${doctor.price} JOD',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: priceColor,
-                    ),
+                    doctor.price != null ? '${doctor.price} JOD' : 'Price not available',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: priceColor),
                   ),
                 ],
               ),
@@ -374,9 +393,19 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
     );
   }
 
-  // --- UPDATED Bottom Navigation Bar ---
+  Widget _imageErrorPlaceholder({double width = 80, double height = 100}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      child: Icon(Icons.person_outline, color: Colors.grey[400], size: 40),
+    );
+  }
+
   Widget _buildBottomNavBar() {
-    // (Bottom nav bar code remains the same)
     return BottomAppBar(
       color: bottomAppBarBg,
       child: Row(
@@ -384,47 +413,38 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
         children: [
           IconButton(
             icon: Icon(Icons.home, color: bottomAppBarIconColor),
-            onPressed: () {
-              print("Navigate to Home (Pop until first route)");
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
+            onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
             tooltip: 'Home',
           ),
           IconButton(
             icon: Icon(Icons.access_time, color: bottomAppBarIconColor),
             onPressed: () {
-              print("Navigate to Reminders (/reminders)");
-              // Make sure '/reminders' is defined in your MaterialApp routes
-              Navigator.pushNamed(context, '/reminders');
+              if (ModalRoute.of(context)?.settings.name != '/reminders') {
+                Navigator.pushNamed(context, '/reminders');
+              }
             },
             tooltip: 'Reminders',
           ),
           IconButton(
             icon: Icon(Icons.checklist, color: bottomAppBarIconColor),
             onPressed: () {
-              print("Navigate to Activity (/activity)");
-              // Make sure '/activity' is defined in your MaterialApp routes
-              Navigator.pushNamed(context, '/activity');
+               if (ModalRoute.of(context)?.settings.name != '/activity') {
+                Navigator.pushNamed(context, '/activity');
+              }
             },
             tooltip: 'Activity',
           ),
           IconButton(
             icon: Icon(Icons.menu_book, color: bottomAppBarIconColor),
-            onPressed: () {
-              print("Navigate to Doctor Directory (/doctors)");
-              // Optional: Could add logic to prevent navigating if already here
-              // Make sure '/doctors' is defined in your MaterialApp routes
-              // Navigator.pushNamed(context, '/doctors'); // Might cause issues if already here
-              // If using pushNamed, ensure you handle potential duplicate pushes or use pushReplacementNamed
-            },
+            onPressed: () { /* Already on doctors screen, or handle appropriately */},
             tooltip: 'Doctors',
           ),
           IconButton(
             icon: Icon(Icons.person, color: bottomAppBarIconColor),
             onPressed: () {
-              print("Navigate to Profile (/profile)");
-              // Make sure '/profile' is defined in your MaterialApp routes
-              Navigator.pushNamed(context, '/profile');
+              if (ModalRoute.of(context)?.settings.name != '/profile') {
+                Navigator.pushNamed(context, '/profile');
+              }
             },
             tooltip: 'Profile',
           ),
@@ -434,29 +454,17 @@ class _DoctorDirectoryScreenState extends State<DoctorDirectoryScreen> {
   }
 }
 
-// --- Custom Clipper for Curved Header ---
 class CurvedHeaderClipper extends CustomClipper<Path> {
-  // (Clipper code remains the same)
   @override
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height * 0.85);
     final firstControlPoint = Offset(size.width / 4, size.height);
     final firstEndPoint = Offset(size.width / 2, size.height * 0.9);
-    path.quadraticBezierTo(
-      firstControlPoint.dx,
-      firstControlPoint.dy,
-      firstEndPoint.dx,
-      firstEndPoint.dy,
-    );
+    path.quadraticBezierTo(firstControlPoint.dx, firstControlPoint.dy, firstEndPoint.dx, firstEndPoint.dy);
     final secondControlPoint = Offset(size.width * 3 / 4, size.height * 0.8);
     final secondEndPoint = Offset(size.width, size.height * 0.85);
-    path.quadraticBezierTo(
-      secondControlPoint.dx,
-      secondControlPoint.dy,
-      secondEndPoint.dx,
-      secondEndPoint.dy,
-    );
+    path.quadraticBezierTo(secondControlPoint.dx, secondControlPoint.dy, secondEndPoint.dx, secondEndPoint.dy);
     path.lineTo(size.width, 0);
     path.close();
     return path;

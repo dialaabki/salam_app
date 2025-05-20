@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:math';
-import 'package:provider/provider.dart'; // 1. Import Provider
+import 'package:provider/provider.dart'; // Used for ThemeNotifier if not directly accessing theme
+// --- Firebase Imports ---
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+// --- End Firebase Imports ---
 
-// Import your models and other screens
-import '../../models/reminder.dart';
+// Import models and other screens
+import '../../models/reminder.dart'; // Ensure ReminderType enum is defined here
 import 'AddReminderScreen.dart';
 import '../../widgets/bottom_nav_bar.dart';
-import '../../providers/theme_provider.dart'; // 2. Import ThemeNotifier
+import '../../providers/theme_provider.dart'; // For theme access
 
-// --- Define Colors (Some may remain for fixed elements) ---
-// const Color mainAppColor = Color(0xFF5588A4); // Will use theme.primaryColor
-// const Color lightGreyColor = Color(0xFFF0F0F0); // Will use theme surface/variant
-
-// --- Define Image Asset Paths (Keep as is) ---
+// --- Image Asset Paths ---
 const String basePath = "assets/images/";
 const String iconRitalinPath = basePath + 'icon_ritalin.png';
 const String iconSleepPath = basePath + 'icon_sleep.png';
@@ -32,75 +31,165 @@ class RemindersListScreen extends StatefulWidget {
 }
 
 class _RemindersListScreenState extends State<RemindersListScreen> {
-  // --- Data and State (Keep as is) ---
-  final List<Reminder> _allReminders = [
-    // Sample Data using names that match the icon logic
-    Reminder( id: '1', type: ReminderType.medicine, name: 'Ritalin', amount: 1, time: TimeOfDay(hour: 9, minute: 0), startDate: DateTime.now().subtract(Duration(days: 5)), endDate: DateTime.now().add(Duration(days: 30)), selectedDays: {1, 2, 3, 4, 5}, ),
-    Reminder( id: '2', type: ReminderType.activity, name: 'Sleep', time: TimeOfDay(hour: 23, minute: 0), startDate: DateTime.now().subtract(Duration(days: 10)), endDate: DateTime.now().add(Duration(days: 100)), selectedDays: {1, 2, 3, 4, 5, 6, 7}, ),
-     Reminder( id: '3', type: ReminderType.activity, name: 'Breath', time: TimeOfDay(hour: 17, minute: 30), startDate: DateTime.now().subtract(Duration(days: 1)), endDate: DateTime.now().add(Duration(days: 60)), selectedDays: {2,4}, ),
-    Reminder( id: '4', type: ReminderType.activity, name: 'Walk', time: TimeOfDay(hour: 17, minute: 30), startDate: DateTime.now().subtract(Duration(days: 1)), endDate: DateTime.now().add(Duration(days: 60)), selectedDays: {1,3,5}, ),
-     Reminder( id: '5', type: ReminderType.activity, name: 'Mindfulness', time: TimeOfDay(hour: 17, minute: 30), startDate: DateTime.now().subtract(Duration(days: 1)), endDate: DateTime.now().add(Duration(days: 60)), selectedDays: {7}, ),
-      Reminder( id: '6', type: ReminderType.activity, name: 'BreakFree', time: TimeOfDay(hour: 17, minute: 30), startDate: DateTime.now().subtract(Duration(days: 1)), endDate: DateTime.now().add(Duration(days: 60)), selectedDays: {6}, ),
-      Reminder( id: '7', type: ReminderType.activity, name: 'Yoga', time: TimeOfDay(hour: 8, minute: 0), startDate: DateTime.now().subtract(Duration(days: 2)), endDate: DateTime.now().add(Duration(days: 50)), selectedDays: {2, 4}, ),
-  ];
   DateTime _selectedDate = DateTime.now();
-  String _generateId() => Random().nextInt(1000000).toString();
 
-  void _addReminder(Reminder newReminder) {
-    final reminderWithId = Reminder(
-      id: _generateId(), type: newReminder.type, name: newReminder.name,
-      time: newReminder.time, startDate: newReminder.startDate, endDate: newReminder.endDate,
-      selectedDays: newReminder.selectedDays, amount: newReminder.amount,
-      iconAsset: newReminder.iconAsset, isCompleted: false,
-    );
-    setState(() {
-      _allReminders.add(reminderWithId);
-      _allReminders.sort((a, b) => (a.time.hour * 60 + a.time.minute).compareTo(b.time.hour * 60 + b.time.minute));
-    });
+  // --- Firestore References ---
+  final CollectionReference _remindersCollection = FirebaseFirestore.instance.collection('reminders');
+  final User? _currentUser = FirebaseAuth.instance.currentUser;
+  // --- End Firestore References ---
+
+
+  // --- Firestore Helper Methods ---
+  String _getDailyCompletionDocId(DateTime date) {
+    return DateFormat('yyyy-MM-dd').format(date);
   }
-  void _removeReminder(String id) { setState(() => _allReminders.removeWhere((r) => r.id == id)); }
-  void _toggleReminderCompletion(String id) { setState(() { _allReminders.firstWhere((r) => r.id == id).isCompleted = !_allReminders.firstWhere((r) => r.id == id).isCompleted; }); }
 
-  List<Reminder> get _remindersForSelectedDate {
-     return _allReminders.where((reminder) {
-      bool dateInRange = (_selectedDate.isAfter(reminder.startDate.subtract(Duration(days: 1))) && _selectedDate.isBefore(reminder.endDate.add(Duration(days: 1)))) ||
-          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day) == DateTime(reminder.startDate.year, reminder.startDate.month, reminder.startDate.day) ||
-          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day) == DateTime(reminder.endDate.year, reminder.endDate.month, reminder.endDate.day);
-      bool dayMatches = reminder.selectedDays.contains(_selectedDate.weekday);
+  Future<void> _toggleReminderCompletionForDate(String reminderDocId, DateTime date, bool currentIsCompletedForThisDate) async {
+    if (_currentUser == null) {
+      print("Cannot toggle completion: User not logged in.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please log in to update reminders.'), backgroundColor: Colors.orange));
+      }
+      return;
+    }
+
+    final dailyCompletionDocId = _getDailyCompletionDocId(date);
+    final dailyCompletionRef = _remindersCollection.doc(reminderDocId).collection('dailyCompletions').doc(dailyCompletionDocId);
+
+    try {
+      if (currentIsCompletedForThisDate) {
+        await dailyCompletionRef.delete();
+        print("Unmarked reminder $reminderDocId as completed for $dailyCompletionDocId");
+      } else {
+        await dailyCompletionRef.set({
+          'completedAt': Timestamp.now(),
+          'userId': _currentUser!.uid, // Good to have for potential auditing
+        });
+        print("Marked reminder $reminderDocId as completed for $dailyCompletionDocId");
+      }
+    } catch (e) {
+      print("Error toggling daily completion status ($reminderDocId for $dailyCompletionDocId): $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update status: ${e.toString()}'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  Future<void> _removeReminderFirestore(String docId, String reminderName) async {
+    if (_currentUser == null) {
+        print("Cannot remove reminder: User not logged in.");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please log in to manage reminders.'), backgroundColor: Colors.orange));
+        }
+        return;
+    }
+    try {
+      await _remindersCollection.doc(docId).delete();
+      // TODO: Implement robust deletion of 'dailyCompletions' subcollection for this reminder.
+      // This typically requires a Cloud Function for atomicity and completeness,
+      // or iterating through and deleting documents client-side (less efficient and can be interrupted).
+      // For now, subcollection docs might be orphaned if the main reminder is deleted.
+      print("Reminder $docId ($reminderName) deleted. Associated dailyCompletions may be orphaned.");
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$reminderName removed'), backgroundColor: Colors.orangeAccent)
+        );
+      }
+    } catch (e) {
+      print("Error removing reminder ($docId): $e");
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to remove reminder: ${e.toString()}'), backgroundColor: Colors.red)
+        );
+      }
+    }
+  }
+  // --- End Firestore Helper Methods ---
+
+  // --- Filter Logic ---
+  List<QueryDocumentSnapshot> _filterRemindersForSelectedDate(List<QueryDocumentSnapshot> allDocs) {
+    if (_currentUser == null) return [];
+
+    // print("--- Filtering for _selectedDate: $_selectedDate (weekday: ${_selectedDate.weekday}) ---"); // Can be verbose
+
+    return allDocs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null) {
+        // print("Doc ID ${doc.id}: Data is null. Skipping.");
+        return false;
+      }
+
+      final String reminderName = data['name'] ?? 'Unknown Reminder';
+
+
+      if (data['startDate'] is! Timestamp || data['endDate'] is! Timestamp || data['selectedDays'] is! List) {
+        // print("[$reminderName - ${doc.id}] Invalid date/day types. startDate: ${data['startDate']?.runtimeType}, endDate: ${data['endDate']?.runtimeType}, selectedDays: ${data['selectedDays']?.runtimeType}");
+        return false;
+      }
+
+      final Timestamp startTimestamp = data['startDate'];
+      final Timestamp endTimestamp = data['endDate'];
+      final DateTime startDate = startTimestamp.toDate();
+      final DateTime endDate = endTimestamp.toDate();
+      final List<dynamic> daysDynamic = data['selectedDays'];
+      final List<int> selectedDaysList = daysDynamic.map((day) => day is int ? day : int.tryParse(day.toString()) ?? -1).where((day) => day != -1).toList();
+
+      if (selectedDaysList.isEmpty) {
+          // print("[$reminderName - ${doc.id}] Empty selectedDaysList after conversion.");
+          return false;
+      }
+
+      final selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      final startDateOnly = DateTime(startDate.year, startDate.month, startDate.day);
+      final endDateOnly = DateTime(endDate.year, endDate.month, endDate.day);
+
+      bool dateInRange = !selectedDateOnly.isBefore(startDateOnly) && !selectedDateOnly.isAfter(endDateOnly);
+      bool dayMatches = selectedDaysList.contains(_selectedDate.weekday);
+
+      // Detailed print for specific debugging if needed:
+      // if (reminderName.toLowerCase().contains("specific_test_name")) {
+      //    print("[$reminderName - ${doc.id}] dateInRange: $dateInRange, dayMatches: $dayMatches (UI weekday: ${_selectedDate.weekday}, DB days: $selectedDaysList)");
+      // }
+
       return dateInRange && dayMatches;
-    }).toList();
+    }).toList()
+    ..sort((a, b) { // Sort the filtered list by time
+        final dataA = a.data() as Map<String, dynamic>;
+        final dataB = b.data() as Map<String, dynamic>;
+        final timeA = TimeOfDay(hour: dataA['timeHour'] ?? 0, minute: dataA['timeMinute'] ?? 0);
+        final timeB = TimeOfDay(hour: dataB['timeHour'] ?? 0, minute: dataB['timeMinute'] ?? 0);
+        final totalMinutesA = timeA.hour * 60 + timeA.minute;
+        final totalMinutesB = timeB.hour * 60 + timeB.minute;
+        return totalMinutesA.compareTo(totalMinutesB);
+     });
   }
-  // --- End Data and State ---
+  // --- End Filter Logic ---
 
   @override
   Widget build(BuildContext context) {
-    // --- 3. Access Theme ---
     final theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    // --- End Theme Access ---
-
-    final remindersToShow = _remindersForSelectedDate;
     final screenHeight = MediaQuery.of(context).size.height;
     final topImageHeight = screenHeight * 0.20;
 
     return Scaffold(
-      // 4. Use theme primary color for the background behind the top image
       backgroundColor: theme.colorScheme.primary,
-      bottomNavigationBar: const AppBottomNavBar(), // Keep Nav Bar
+      bottomNavigationBar: const AppBottomNavBar(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.push<Reminder>( context,
-            MaterialPageRoute(builder: (context) => AddReminderScreen(addReminderCallback: _addReminder)),
+        onPressed: () {
+          Navigator.push( context,
+            MaterialPageRoute(builder: (context) => const AddReminderScreen()),
           );
         },
-        // 5. Use theme colors for FAB
-        backgroundColor: theme.colorScheme.secondary, // Or primary
-        foregroundColor: theme.colorScheme.onSecondary, // Or onPrimary
+        backgroundColor: theme.colorScheme.secondary,
+        foregroundColor: theme.colorScheme.onSecondary,
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
-          // --- 1. Top Image Area (No theme changes needed) ---
+          // Top Image Area
           Container(
             height: topImageHeight,
             width: double.infinity,
@@ -111,28 +200,19 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
               ),
             ),
           ),
-
-          // --- 2. Content Container Area (Theme Aware) ---
+          // Content Container Area
           Expanded(
             child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(25.0),
-                topRight: Radius.circular(25.0),
-              ),
+              borderRadius: const BorderRadius.only( topLeft: Radius.circular(25.0), topRight: Radius.circular(25.0), ),
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  // 6. Use theme surface color for the main content background
                   color: theme.colorScheme.surface,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(25.0),
-                    topRight: Radius.circular(25.0),
-                  ),
+                  borderRadius: const BorderRadius.only( topLeft: Radius.circular(25.0), topRight: Radius.circular(25.0), ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- Reminders Title ---
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20.0, 25.0, 20.0, 10.0),
                       child: Text(
@@ -140,16 +220,11 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          // 7. Use theme text color on surface
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
-
-                    // --- Date Selector ---
-                    _buildDateSelector(context, theme), // Pass theme
-
-                    // --- "Today", "Tomorrow", etc. Label ---
+                    _buildDateSelector(context, theme),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
                       child: Text(
@@ -157,22 +232,75 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          // 8. Use theme primary color for this label
                           color: theme.colorScheme.primary,
                         ),
                       ),
                     ),
-
-                    // --- Reminder List ---
+                    // --- Reminder List (Using Nested StreamBuilders) ---
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
-                        itemCount: remindersToShow.length,
-                        itemBuilder: (context, index) {
-                          final reminder = remindersToShow[index];
-                          return _buildReminderItem(context, theme, reminder); // Pass theme
-                        },
-                      ),
+                      child: _currentUser == null
+                        ? Center(child: Text("Please log in to view reminders.", style: TextStyle(color: theme.hintColor)))
+                        : StreamBuilder<QuerySnapshot>(
+                            stream: _remindersCollection.where('userId', isEqualTo: _currentUser!.uid).snapshots(),
+                            builder: (context, reminderSnapshot) {
+                              if (reminderSnapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (reminderSnapshot.hasError) {
+                                print("Firestore Stream Error (Outer): ${reminderSnapshot.error}");
+                                return Center(child: Text('Error loading reminders.', style: TextStyle(color: theme.colorScheme.error)));
+                              }
+                              if (!reminderSnapshot.hasData || reminderSnapshot.data!.docs.isEmpty) {
+                                return Center(child: Text('No reminders added yet.', style: TextStyle(color: theme.hintColor)));
+                              }
+
+                              final allUserReminderDocs = reminderSnapshot.data!.docs;
+                              final remindersToShowDocs = _filterRemindersForSelectedDate(allUserReminderDocs);
+
+                              if (remindersToShowDocs.isEmpty) {
+                                 return Center(child: Text('No reminders for ${DateFormat('MMM d').format(_selectedDate)}.', style: TextStyle(color: theme.hintColor)));
+                              }
+
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
+                                itemCount: remindersToShowDocs.length,
+                                itemBuilder: (context, index) {
+                                  final reminderDoc = remindersToShowDocs[index];
+                                  final reminderData = reminderDoc.data() as Map<String, dynamic>;
+                                  final String reminderId = reminderDoc.id;
+
+                                  return StreamBuilder<DocumentSnapshot>(
+                                    stream: _remindersCollection
+                                        .doc(reminderId)
+                                        .collection('dailyCompletions')
+                                        .doc(_getDailyCompletionDocId(_selectedDate))
+                                        .snapshots(),
+                                    builder: (context, completionSnapshot) {
+                                      bool isCompletedForThisDate = false;
+                                      // Only consider 'exists' if the stream is active and has data
+                                      if (completionSnapshot.connectionState == ConnectionState.active && completionSnapshot.hasData) {
+                                        isCompletedForThisDate = completionSnapshot.data!.exists;
+                                      }
+                                      // While waiting for completion status, assume not completed or show placeholder
+                                      // else if (completionSnapshot.connectionState == ConnectionState.waiting) {
+                                      //    return ListTile(title: Text(reminderData['name'] ?? 'Loading status...'));
+                                      // }
+                                      // You might also want to handle completionSnapshot.hasError
+
+                                      return _buildReminderItem(
+                                        context,
+                                        theme,
+                                        reminderId,
+                                        reminderData,
+                                        isCompletedForThisDate,
+                                        _selectedDate // Pass the specific date this item instance is for
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
                     ),
                   ],
                 ),
@@ -182,9 +310,8 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
         ],
       ),
     );
-  } // End build
+  }
 
-  // --- Helper function to get the text for the date header (No theme changes needed) ---
   String _getDateHeaderText() {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -195,22 +322,24 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
       return DateFormat('EEEE, MMMM d').format(_selectedDate);
   }
 
-  // --- Widget for Date Selection (Theme Aware) ---
-  Widget _buildDateSelector(BuildContext context, ThemeData theme) { // Accept theme
+  Widget _buildDateSelector(BuildContext context, ThemeData theme) {
     List<DateTime> datesToShow = [];
-    for (int i = 0; i <= 4; i++) { datesToShow.add(DateTime.now().add(Duration(days: i))); }
+    final baseDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    for (int i = -3; i <= 4; i++) { datesToShow.add(baseDate.add(Duration(days: i))); }
+    int initialIndex = datesToShow.indexWhere((date) => date == baseDate);
+    if (initialIndex == -1) initialIndex = 3;
+    ScrollController dateScrollController = ScrollController( initialScrollOffset: initialIndex * (65.0 + 8.0) - (MediaQuery.of(context).size.width / 2) + 32.5 );
 
     return Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
         height: 75,
         child: ListView.separated(
-            scrollDirection: Axis.horizontal,
+            controller: dateScrollController, scrollDirection: Axis.horizontal,
             itemCount: datesToShow.length,
             separatorBuilder: (context, index) => const SizedBox(width: 8),
             itemBuilder: (context, index){
                  final date = datesToShow[index];
-                 bool isSelected = date.year == _selectedDate.year && date.month == _selectedDate.month && date.day == _selectedDate.day;
-                 // 9. Define theme-aware colors for chip
+                 bool isSelected = date == baseDate;
                  final chipBackgroundColor = theme.colorScheme.surfaceVariant.withOpacity(0.5);
                  final chipSelectedColor = theme.colorScheme.primary;
                  final chipLabelColor = theme.colorScheme.onSurfaceVariant;
@@ -218,14 +347,14 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
 
                  return ChoiceChip(
                     label: Column( mainAxisSize: MainAxisSize.min, children: [
-                            Text(DateFormat('EEE').format(date), style: TextStyle(fontSize: 12, color: isSelected ? chipSelectedLabelColor : chipLabelColor.withOpacity(0.7))), // Use theme colors
+                            Text(DateFormat('EEE').format(date), style: TextStyle(fontSize: 12, color: isSelected ? chipSelectedLabelColor : chipLabelColor.withOpacity(0.7))),
                             const SizedBox(height: 4),
-                            Text(DateFormat('d').format(date), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? chipSelectedLabelColor : chipLabelColor)), // Use theme colors
+                            Text(DateFormat('d').format(date), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isSelected ? chipSelectedLabelColor : chipLabelColor)),
                         ] ),
                     selected: isSelected,
                     onSelected: (bool selected) { if (selected) { setState(() { _selectedDate = date; }); } },
-                    selectedColor: chipSelectedColor, // Use theme color
-                    backgroundColor: chipBackgroundColor, // Use theme color
+                    selectedColor: chipSelectedColor,
+                    backgroundColor: chipBackgroundColor,
                     shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10), side: const BorderSide(color: Colors.transparent) ),
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     showCheckmark: false,
@@ -235,64 +364,66 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
     );
   }
 
-  // --- Widget for a Single Reminder Item (Theme Aware) ---
-  Widget _buildReminderItem(BuildContext context, ThemeData theme, Reminder reminder) { // Accept theme
-     // 10. Define theme-aware colors for list tile content
+  Widget _buildReminderItem(BuildContext context, ThemeData theme, String docId, Map<String, dynamic> data, bool isCompletedForThisDate, DateTime forDate) {
      final cardColor = theme.brightness == Brightness.dark
-                      ? theme.colorScheme.surfaceVariant.withOpacity(0.5) // Darker variant for dark mode cards
-                      : theme.colorScheme.surfaceVariant.withOpacity(0.8); // Lighter variant for light mode cards
+                      ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+                      : theme.colorScheme.surfaceVariant.withOpacity(0.8);
      final titleColor = theme.colorScheme.onSurfaceVariant;
      final subtitleColor = theme.colorScheme.onSurfaceVariant.withOpacity(0.7);
      final uncheckedBorderColor = theme.dividerColor;
 
+     final String name = data['name'] ?? 'Unnamed Reminder';
+     final String typeStr = data['type'] ?? 'activity';
+     final ReminderType type = typeStr == 'medicine' ? ReminderType.medicine : ReminderType.activity;
+     final int? amount = data['amount'];
+     final int hour = data['timeHour'] ?? 0;
+     final int minute = data['timeMinute'] ?? 0;
+     final TimeOfDay time = TimeOfDay(hour: hour, minute: minute);
+     String subtitleText = time.format(context);
+     if (type == ReminderType.medicine && amount != null) {
+       subtitleText = '$amount pill${amount == 1 ? '' : 's'} - $subtitleText';
+     }
+
     return Dismissible(
-      key: ValueKey(reminder.id),
+      key: ValueKey(docId + forDate.toIso8601String()), // Make key unique per date instance
       direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        _removeReminder(reminder.id);
-        ScaffoldMessenger.of(context).showSnackBar( SnackBar( content: Text('${reminder.name} removed'), backgroundColor: Colors.redAccent, ), ); // Keep red for remove action
-      },
+      onDismissed: (direction) { _removeReminderFirestore(docId, name); },
       background: Container(
           margin: const EdgeInsets.symmetric(vertical: 6.0),
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration( color: Colors.redAccent.withOpacity(0.9), borderRadius: BorderRadius.circular(15.0), ), // Keep red
+          decoration: BoxDecoration( color: Colors.redAccent.withOpacity(0.9), borderRadius: BorderRadius.circular(15.0), ),
           alignment: Alignment.centerRight,
           child: const Row( mainAxisSize: MainAxisSize.min, children: [ Text("Remove", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), SizedBox(width: 8), Icon(Icons.delete_outline, color: Colors.white), ] )
         ),
       child: Card(
         margin: const EdgeInsets.symmetric(vertical: 6.0),
-        elevation: 0.5, // Subtle elevation
+        elevation: 0.5,
         shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(15.0), ),
-        // 11. Use theme-aware card color
         color: cardColor,
         child: ListTile(
-          leading: _getReminderIcon(context, theme, reminder), // Pass theme to icon builder
-          title: Text( reminder.name, style: TextStyle(fontWeight: FontWeight.w500, color: titleColor) ), // Use theme color
-          subtitle: Text(
-            '${reminder.type == ReminderType.medicine ? '${reminder.amount} pill${reminder.amount == 1 ? '' : 's'} - ' : ''}${reminder.time.format(context)}',
-            style: TextStyle(color: subtitleColor), // Use theme color
-          ),
+          leading: _getReminderIconFromData(context, theme, name, type),
+          title: Text( name, style: TextStyle(fontWeight: FontWeight.w500, color: titleColor) ),
+          subtitle: Text( subtitleText, style: TextStyle(color: subtitleColor), ),
           trailing: Checkbox(
-            value: reminder.isCompleted,
-            onChanged: (bool? value) { _toggleReminderCompletion(reminder.id); },
+            value: isCompletedForThisDate,
+            onChanged: (bool? value) {
+              _toggleReminderCompletionForDate(docId, forDate, isCompletedForThisDate);
+            },
             shape: const CircleBorder(),
-            // 12. Use theme colors for Checkbox
             activeColor: theme.colorScheme.primary,
             checkColor: theme.colorScheme.onPrimary,
             side: BorderSide(color: uncheckedBorderColor, width: 1.5),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onTap: () { print("Tapped on ${reminder.name}"); },
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         ),
       ),
     );
   }
 
-  // --- Helper to get reminder IMAGE (Theme Aware Fallback) ---
-  Widget _getReminderIcon(BuildContext context, ThemeData theme, Reminder reminder) { // Accept theme
+  Widget _getReminderIconFromData(BuildContext context, ThemeData theme, String name, ReminderType type) {
     String? imagePath;
-    switch (reminder.name.toLowerCase()) {
+    switch (name.toLowerCase()) {
       case 'ritalin': imagePath = iconRitalinPath; break;
       case 'sleep': imagePath = iconSleepPath; break;
       case 'breath': imagePath = iconBreathPath; break;
@@ -300,28 +431,27 @@ class _RemindersListScreenState extends State<RemindersListScreen> {
       case 'mindfulness': imagePath = iconMindfulnessPath; break;
       case 'breakfree': imagePath = iconBreakfreePath; break;
     }
-    imagePath ??= reminder.type == ReminderType.medicine ? iconMedicineDefaultPath : iconActivityDefaultPath;
+    imagePath ??= type == ReminderType.medicine ? iconMedicineDefaultPath : iconActivityDefaultPath;
 
     return CircleAvatar(
       radius: 22,
-      backgroundColor: Colors.transparent, // Keep transparent bg for image
+      backgroundColor: Colors.transparent,
       child: ClipOval(
         child: Image.asset(
           imagePath,
-          fit: BoxFit.cover,
-          width: 44, height: 44,
+          fit: BoxFit.cover, width: 44, height: 44,
           errorBuilder: (context, error, stackTrace) {
             print("Error loading image: $imagePath - $error");
-            // 13. Use theme error color for fallback icon
             return Icon(
-              reminder.type == ReminderType.medicine ? Icons.medication_outlined : Icons.directions_run, // Changed icons slightly
-              color: theme.colorScheme.error,
-              size: 24,
+              type == ReminderType.medicine ? Icons.medication_outlined : Icons.directions_run,
+              color: theme.colorScheme.error, size: 24,
             );
           },
         ),
       ),
     );
-  } // End of _getReminderIcon
+  }
 
-} // End of _RemindersListScreenState
+}
+
+// Ensure ReminderType enum is defined, e.g., in models/reminder.dart

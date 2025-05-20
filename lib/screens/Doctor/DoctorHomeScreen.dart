@@ -3,14 +3,14 @@ import 'appDrawer.dart'; // <-- Import the drawer (Assuming this exists)
 import 'patientsScreen.dart'; // <-- Import to access Patient class
 import 'patientDetailScreen.dart'; // <-- Import detail screen
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class DoctorHomeScreen extends StatefulWidget {
+  const DoctorHomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   final int _screenIndex = 0; // This is the Home screen
 
   final String doctorImagePath = 'assets/images/doctorpic.png';

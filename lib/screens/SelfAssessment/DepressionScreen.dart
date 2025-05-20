@@ -1,8 +1,17 @@
 // depression_screen.dart
 import 'package:flutter/material.dart';
+// import 'dart:convert'; // Not strictly needed now
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Import the keys and constants from SelfAssessmentScreen
+import 'SelfAssessmentScreen.dart'
+    show keyDepression, firestoreCollection, fieldPartialSaves;
 
 class DepressionScreen extends StatefulWidget {
-  const DepressionScreen({super.key});
+  final Map<String, dynamic>? initialState;
+
+  const DepressionScreen({super.key, this.initialState});
 
   @override
   State<DepressionScreen> createState() => _DepressionScreenState();
@@ -16,12 +25,15 @@ class _DepressionScreenState extends State<DepressionScreen> {
   final Color _questionTextColor = Colors.black87;
   final Color _optionTextColor = Colors.black54;
 
-  // Keep track of the selected answer index for each question
-  // Initialize with nulls to represent unanswered questions
-  final List<int?> _answers = List.filled(21, null);
+  List<int?> _answers = List.filled(21, null);
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  User? _currentUser;
+  DocumentReference? _userProgressDocRef;
+  bool _isSaving = false;
 
   final List<Map<String, dynamic>> _questions = [
-    // (Questions list remains the same as provided earlier)
     {
       'question': 'Q1. How sad do you feel?',
       'options': [
@@ -214,70 +226,244 @@ class _DepressionScreenState extends State<DepressionScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Depression Assessment (Step 1)'),
-        backgroundColor: _primaryColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            // **** ADD LOGGING for Back Button ****
-            print("DepressionScreen: Back button pressed, popping with false.");
-            Navigator.pop(context, false); // Pop with false (not completed)
-          },
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderImage(),
-            const SizedBox(height: 24.0),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _questions.length,
-              itemBuilder: (context, index) {
-                return _buildQuestionBlock(index);
-              },
-              separatorBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Divider(color: _dividerColor, thickness: 1.0),
-                );
-              },
+  void initState() {
+    super.initState();
+    _currentUser = _auth.currentUser;
+    if (_currentUser != null) {
+      _userProgressDocRef = _firestore
+          .collection(firestoreCollection) // Uses imported constant
+          .doc(_currentUser!.uid);
+      print("[DepressionScreen] initState: User ID: ${_currentUser!.uid}");
+      print(
+        "[DepressionScreen] Progress Document Path: ${_userProgressDocRef?.path}",
+      );
+      _initializeState();
+    } else {
+      print("Error: CurrentUser is null in DepressionScreen initState");
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Error: User not logged in."),
+              backgroundColor: Colors.red,
             ),
-            const SizedBox(height: 30.0),
-            _buildNavigateButton(), // Button with logging inside
-            const SizedBox(height: 12.0),
-            _buildSaveLink(),
-            const SizedBox(height: 20.0),
-          ],
+          );
+          Navigator.of(context).pop();
+        }
+      });
+    }
+  }
+
+  void _initializeState() {
+    if (widget.initialState != null && mounted) {
+      print(
+        "DepressionScreen: Initializing state from passed data: ${widget.initialState}",
+      );
+      try {
+        if (widget.initialState!.containsKey('answers') &&
+            widget.initialState!['answers'] is List) {
+          List<dynamic> dynamicList = widget.initialState!['answers'];
+          List<int?> loadedAnswers =
+              dynamicList.map((item) => item is int ? item : null).toList();
+
+          if (loadedAnswers.length == _answers.length) {
+            setState(() {
+              _answers = loadedAnswers;
+            });
+            print("DepressionScreen: Initialized with saved state: $_answers");
+          } else {
+            print(
+              "DepressionScreen: Initial state 'answers' length mismatch (${loadedAnswers.length} vs ${_answers.length}). Using defaults.",
+            );
+          }
+        } else {
+          print(
+            "DepressionScreen: Initial state missing 'answers' key or not a list. Using defaults.",
+          );
+        }
+      } catch (e) {
+        print(
+          "DepressionScreen: Error parsing initial state data: $e. Using defaults.",
+        );
+        setState(() {
+          _answers = List.filled(21, null);
+        });
+      }
+    } else {
+      print("DepressionScreen: No initial state passed. Using defaults.");
+    }
+  }
+
+  Future<void> _saveStateToFirestore() async {
+    if (_userProgressDocRef == null) {
+      print(
+        "DepressionScreen Error: Cannot save state, _userProgressDocRef is null. Ensure user is logged in and Firestore is reachable.",
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Could not save. User session issue?'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    setState(() => _isSaving = true);
+
+    final Map<String, dynamic> currentStateForFirestore = {'answers': _answers};
+    final String fieldPathForThisStep = '$fieldPartialSaves.$keyDepression';
+
+    // --- Enhanced Logging ---
+    print("DepressionScreen: Attempting to save partial state to Firestore.");
+    print("DepressionScreen: User ID: ${_currentUser?.uid}");
+    print("DepressionScreen: Document Path: ${_userProgressDocRef?.path}");
+    print(
+      "DepressionScreen: Data to save under '$keyDepression': $currentStateForFirestore",
+    );
+    print(
+      "DepressionScreen: Full data object for set: ${{
+        fieldPartialSaves: {keyDepression: currentStateForFirestore},
+      }}",
+    );
+    print(
+      "DepressionScreen: Field path for merge option: $fieldPathForThisStep",
+    );
+    // --- End Enhanced Logging ---
+
+    try {
+      await _userProgressDocRef!.set({
+        fieldPartialSaves: {keyDepression: currentStateForFirestore},
+      }, SetOptions(mergeFields: [fieldPathForThisStep]));
+
+      print(
+        "DepressionScreen: Partial state SAVE SUCCEEDED for '$keyDepression'.",
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress saved.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, 'saved');
+      }
+    } catch (e, s) {
+      // Added stack trace to catch
+      print("DepressionScreen: Error saving state to Firestore: $e");
+      print("DepressionScreen: Stack trace: $s"); // Print stack trace
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save progress. Check console for errors.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _clearPartialSaveFromFirestore() async {
+    if (_userProgressDocRef == null || !mounted) return;
+    final String fieldPathForThisStep = '$fieldPartialSaves.$keyDepression';
+    print(
+      "DepressionScreen: Attempting to clear partial save for '$keyDepression' at ${_userProgressDocRef!.path}",
+    );
+    try {
+      await _userProgressDocRef!.update({
+        fieldPathForThisStep: FieldValue.delete(),
+      });
+      print(
+        "DepressionScreen: Cleared partial save for '$keyDepression' from Firestore.",
+      );
+    } catch (e, s) {
+      print(
+        "DepressionScreen: Error clearing partial save for '$keyDepression' from Firestore: $e. This might be okay if it wasn't saved before.",
+      );
+      print("Stack trace: $s");
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+          backgroundColor: _primaryColor,
+        ),
+        body: const Center(
+          child: Text("User not available. Please log in again."),
+        ),
+      );
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        print("DepressionScreen: Back button pressed.");
+        Navigator.pop(context, null);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Depression Assessment (Step 1)'),
+          backgroundColor: _primaryColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, null),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderImage(),
+              const SizedBox(height: 24.0),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _questions.length,
+                itemBuilder: (context, index) => _buildQuestionBlock(index),
+                separatorBuilder:
+                    (context, index) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Divider(color: _dividerColor, thickness: 1.0),
+                    ),
+              ),
+              const SizedBox(height: 30.0),
+              _buildNavigateButton(),
+              const SizedBox(height: 12.0),
+              _buildSaveLink(),
+              const SizedBox(height: 20.0),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeaderImage() {
-    // (Header image build logic remains the same)
     const String imagePath = 'assets/images/step1pic.png';
     return Center(
       child: Image.asset(
         imagePath,
-        height: 60, // Example height, adjust as needed
+        height: 60,
         errorBuilder: (context, error, stackTrace) {
-          print("Error loading image: $error");
+          print("Error loading image '$imagePath': $error");
           return Container(
             height: 60,
-            color: _inactiveColor.withOpacity(0.5),
+            width: 100,
+            color: _inactiveColor.withOpacity(0.3),
             child: const Center(
-              child: Text(
-                'Image Error',
-                style: TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           );
         },
@@ -286,7 +472,6 @@ class _DepressionScreenState extends State<DepressionScreen> {
   }
 
   Widget _buildQuestionBlock(int questionIndex) {
-    // (Question block build logic remains the same)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,6 +481,7 @@ class _DepressionScreenState extends State<DepressionScreen> {
             fontSize: 17.0,
             fontWeight: FontWeight.w600,
             color: _questionTextColor,
+            height: 1.4,
           ),
         ),
         const SizedBox(height: 16.0),
@@ -318,12 +504,12 @@ class _DepressionScreenState extends State<DepressionScreen> {
     required int optionValue,
     required int questionIndex,
   }) {
-    // (Option build logic remains the same)
     final bool isSelected = _answers[questionIndex] == optionValue;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
       child: InkWell(
         onTap: () {
+          if (!mounted) return;
           setState(() {
             _answers[questionIndex] = optionValue;
           });
@@ -372,45 +558,24 @@ class _DepressionScreenState extends State<DepressionScreen> {
   Widget _buildNavigateButton() {
     return Center(
       child: ElevatedButton(
-        // --- ADDED LOGGING to onPressed ---
-        onPressed: () {
-          // **** START LOGGING ****
-          print("[DepressionScreen] Complete Step 1 button pressed.");
-          print(
-            "[DepressionScreen] Current answers before validation: $_answers",
-          );
-          // **** END LOGGING ****
-
-          // 1. Validate: Check if all questions have been answered
-          bool allAnswered = !_answers.contains(null); // Check for any nulls
-
-          // **** START LOGGING ****
-          print(
-            "[DepressionScreen] Validation result (allAnswered): $allAnswered",
-          );
-          // **** END LOGGING ****
-
+        onPressed: () async {
+          if (!mounted) return;
+          bool allAnswered = !_answers.contains(null);
           if (!allAnswered) {
-            // **** START LOGGING ****
-            print("[DepressionScreen] Validation FAILED. Showing SnackBar.");
-            // **** END LOGGING ****
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Please answer all questions before proceeding.'),
                 backgroundColor: Colors.orangeAccent,
-                duration: Duration(seconds: 2),
+                duration: Duration(seconds: 3),
               ),
             );
-            return; // Stop execution if not all answered
+            return;
           }
 
-          // 2. If valid, print and pop with the answers
-          // **** START LOGGING ****
-          print("[DepressionScreen] Validation PASSED. Popping with data.");
-          // **** END LOGGING ****
-          Navigator.pop(context, _answers); // Return the list of answers
+          await _clearPartialSaveFromFirestore();
+          print("[DepressionScreen] Popping with final data: $_answers");
+          Navigator.pop(context, List<int?>.from(_answers));
         },
-        // --- END MODIFIED onPressed ---
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
@@ -427,29 +592,31 @@ class _DepressionScreenState extends State<DepressionScreen> {
   }
 
   Widget _buildSaveLink() {
-    // (Save link logic remains the same - no functionality implemented)
     return Center(
       child: InkWell(
-        onTap: () {
-          print(
-            '[DepressionScreen] Save and continue later tapped',
-          ); // Added screen context
-          // TODO: Implement save functionality if needed
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Save functionality not implemented yet.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
-        child: Text(
-          'Save and continue later >>',
-          style: TextStyle(
-            fontSize: 14,
-            color: _primaryColor,
-            decoration: TextDecoration.underline,
-            decorationColor: _primaryColor,
-          ),
+        onTap: _isSaving ? null : _saveStateToFirestore,
+        borderRadius: BorderRadius.circular(8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child:
+              _isSaving
+                  ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      color: _primaryColor,
+                    ),
+                  )
+                  : Text(
+                    'Save and continue later >>',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _primaryColor,
+                      decoration: TextDecoration.underline,
+                      decorationColor: _primaryColor,
+                    ),
+                  ),
         ),
       ),
     );

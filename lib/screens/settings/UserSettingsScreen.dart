@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import provider
-// Ensure this path is correct for your project structure
-import '../../providers/theme_provider.dart'; // Import your ThemeNotifier
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// --- Define Colors (Some might be fixed, others derived from theme) ---
-// These might be specific to the design and not fully theme-dependent
-const Color mainAppColor = Color(0xFF5588A4); // Base blue color, also used as primary in themes
-const Color rowItemColor = Colors.white; // Fixed Text/icon color inside the blue rows
-const Color rowBackgroundColor = Color(0xFF5588A4); // Fixed Background for the blue grouped rows/buttons
+// --- Ensure these paths are correct for your project structure ---
+// Make sure these imports point to the correct files in your project.
+// Adjust these paths if your file structure is different.
+import '../../widgets/bottom_nav_bar.dart';    // Assuming this exists at this path
+import '../../providers/theme_provider.dart';  // Import your ThemeNotifier
+import '../auth/loginScreen.dart';           // Import your LoginScreen
+// Or use named routes if defined in main.dart
+// import '../../main.dart'; // If using MyApp.loginRoute
 
-// You can still define fallback colors if needed, but theme is preferred
-const Color darkTextColor = Color(0xFF30394F); // Defined via ThemeData
-const Color lightTextColor = Color(0xFF6A7185); // Defined via ThemeData
-const Color lightBgColor = Colors.white;      // Defined via ThemeData
+// --- Define Base Colors (Optional, but can be useful) ---
+const Color baseBlueColor = Color(0xFF5588A4); // Your original blue for light mode groups
+
+// --- Fallback Text Color ---
+const Color lightModeFallbackTextColor = Color(0xFF30394F); // Fallback for light theme text if needed
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({Key? key}) : super(key: key);
@@ -23,245 +26,365 @@ class UserSettingsScreen extends StatefulWidget {
 
 class _UserSettingsScreenState extends State<UserSettingsScreen> {
   // --- Local State Variables (excluding theme state) ---
-  bool _remindersEnabled = false; // Example initial state (matches image)
-  bool _streakTrackerEnabled = false; // Example initial state (matches image)
-  bool _shareProgressEnabled = false; // Example initial state (matches image)
-  String _selectedLanguage = 'English'; // Example initial state (matches image)
-  final List<String> _languages = ['English', 'Arabic']; // Example options (matches image)
+  bool _remindersEnabled = true; // Example: Default to true
+  bool _streakTrackerEnabled = false;
+  bool _shareProgressEnabled = false;
+  String _selectedLanguage = 'English';
+  final List<String> _languages = ['English', 'Arabic']; // Add more as needed
+
+  // --- Logout Function (with Dialog) ---
+  Future<void> _logout() async {
+    // Get theme data *before* showing the dialog to style it correctly
+    final theme = Theme.of(context);
+    final isDark = Provider.of<ThemeNotifier>(context, listen: false).isDarkMode;
+    final dialogBgColor = theme.dialogTheme.backgroundColor ?? theme.dialogBackgroundColor;
+    final dialogTextColor = theme.textTheme.bodyLarge?.color ?? (isDark ? Colors.white : Colors.black);
+    final destructiveActionColor = isDark ? Colors.redAccent[100] : Colors.red;
+
+    try {
+      // Show confirmation dialog
+      final bool? confirmLogout = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false, // User must explicitly choose an option
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: dialogBgColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+            title: Text('Confirm Logout', style: TextStyle(color: dialogTextColor)),
+            content: Text('Are you sure you want to log out?', style: TextStyle(color: dialogTextColor)),
+            actions: <Widget>[
+              TextButton(
+                child: Text('Cancel', style: TextStyle(color: dialogTextColor?.withOpacity(0.8))),
+                onPressed: () {
+                  Navigator.of(context).pop(false); // Return false
+                },
+              ),
+              TextButton(
+                child: Text('Log Out', style: TextStyle(color: destructiveActionColor, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  Navigator.of(context).pop(true); // Return true
+                },
+              ),
+            ],
+          );
+        },
+      );
+
+      // Proceed only if user confirmed
+      if (confirmLogout == true) {
+        await FirebaseAuth.instance.signOut();
+        // Check if the widget is still mounted before navigating
+        if (mounted) {
+          // Navigate to Login Screen and remove all previous routes
+          // *** IMPORTANT: Make sure '/login' is defined in your MaterialApp routes ***
+          // If not, use the MaterialPageRoute alternative.
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login', // Use your actual LOGIN route name
+            (Route<dynamic> route) => false, // Remove all routes below
+          );
+          // --- Alternative if '/login' route is not defined ---
+          // Navigator.of(context).pushAndRemoveUntil(
+          //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+          //   (Route<dynamic> route) => false,
+          // );
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      print("Error during logout: ${e.message}");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Logout failed: ${e.message ?? "Unknown error"}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print("An unexpected error occurred during logout: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An unexpected error occurred during logout.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  // --- END LOGOUT FUNCTION ---
+
 
   @override
   Widget build(BuildContext context) {
-    // Access the ThemeNotifier using Provider
+    // Access ThemeNotifier and Theme data
     final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final theme = Theme.of(context);
     final bool isDark = themeNotifier.isDarkMode;
 
-    // Get colors from the current theme for adaptive UI elements
-    final Color currentScaffoldBg = Theme.of(context).scaffoldBackgroundColor;
-    final Color currentAppBarColor = Theme.of(context).appBarTheme.backgroundColor ?? mainAppColor; // Fallback
-    final Color currentAppBarFgColor = Theme.of(context).appBarTheme.foregroundColor ?? Colors.white; // Fallback
-    final Color currentSectionTitleColor = Theme.of(context).textTheme.titleMedium?.color ?? (isDark ? Colors.white70 : darkTextColor); // Fallback needed if textTheme isn't fully defined
-    final Color currentDropdownBgColor = isDark ? Colors.grey[700]! : Colors.grey[200]!; // Specific color for dropdown popup
-    final Color currentDropdownFgColor = Theme.of(context).textTheme.bodyLarge?.color ?? (isDark ? Colors.white : darkTextColor); // Text color inside dropdown popup
+    // --- Theme-Aware Colors ---
 
-    // Define colors for the specific blue container style (these might not change with theme)
-    const Color settingsGroupBg = rowBackgroundColor;
-    const Color settingsGroupFg = rowItemColor;
+    // General Theme Colors from Theme Data (more robust)
+    final Color currentScaffoldBg = theme.scaffoldBackgroundColor;
+    final Color currentAppBarFgColor = theme.appBarTheme.foregroundColor ?? (isDark ? Colors.white : Colors.black);
+    final Color currentSectionTitleColor = theme.textTheme.titleSmall?.color ?? (isDark ? Colors.grey[400]! : Colors.black54); // Use titleSmall for section titles
+    final Color currentCardColor = theme.cardColor; // Use for group backgrounds in dark mode
+    final Color currentBodyTextColor = theme.textTheme.bodyLarge?.color ?? (isDark ? Colors.white : Colors.black); // General text
+    final Color currentHintTextColor = theme.textTheme.bodyMedium?.color ?? (isDark ? Colors.grey[400]! : Colors.grey[600]!); // For less important text/icons
+    final Color currentDividerColorTheme = theme.dividerColor;
+    final Color currentDropdownPopupBgColor = theme.popupMenuTheme.color ?? theme.cardColor; // Background of the dropdown menu itself
+    final Color currentDropdownItemFgColor = theme.popupMenuTheme.textStyle?.color ?? currentBodyTextColor; // Text color inside the dropdown menu
+
+    // Colors for Settings Groups/Buttons (derived from theme)
+    final Color currentSettingsGroupBg = isDark
+        ? currentCardColor    // Use theme's card color for dark mode groups
+        : baseBlueColor;      // Keep original blue for light mode groups
+
+    final Color currentSettingsGroupFg = isDark
+        ? currentHintTextColor  // Use hint text color (lighter grey) for dark groups
+        : Colors.white;       // Keep original white for light mode (blue background)
+
+    final Color currentDividerColor = isDark
+        ? currentDividerColorTheme // Use theme divider color in dark mode
+        : currentSettingsGroupFg.withOpacity(0.3); // Use FG-derived divider in light mode (white on blue)
+
+    // Toggle Switch Colors (Derived from theme or FG color)
+    final Color currentActiveThumbColor = theme.colorScheme.primary; // Use primary color for active toggle
+    final Color currentActiveTrackColor = theme.colorScheme.primary.withOpacity(0.5);
+    final Color currentInactiveThumbColor = isDark ? Colors.grey.shade600 : currentSettingsGroupFg.withOpacity(0.7); // Different inactive for dark
+    final Color currentInactiveTrackColor = isDark ? Colors.grey.shade800 : currentSettingsGroupFg.withOpacity(0.2); // Different inactive track for dark
+
+
+    // --- END THEME-AWARE COLORS ---
+
 
     return Scaffold(
-      // backgroundColor: currentAppBarColor, // Optional: Match AppBar background area color
+      // Background color handled by theme
+      backgroundColor: currentScaffoldBg,
       appBar: AppBar(
-        // Theme automatically handles AppBar colors based on light/darkTheme in main.dart
+        // Use theme settings for AppBar
+        elevation: 0, // Optional: remove shadow
         title: Row(
           children: [
             Icon(Icons.settings_outlined, color: currentAppBarFgColor, size: 28),
             const SizedBox(width: 10),
             Text(
                 "Settings",
-                 style: TextStyle(
-                   color: currentAppBarFgColor,
-                   fontWeight: FontWeight.bold,
-                   fontSize: 22,
-                 )
+                 style: theme.appBarTheme.titleTextStyle?.copyWith(color: currentAppBarFgColor, fontSize: 22) // Use theme style
             ),
           ],
         ),
-        // Optional: Add back button if this screen is pushed onto the stack
-        // leading: IconButton(
-        //   icon: Icon(Icons.arrow_back_ios, color: currentAppBarFgColor),
-        //   onPressed: () => Navigator.of(context).pop(),
-        // ),
+        automaticallyImplyLeading: false, // Assuming settings is a root tab
       ),
-      // Replace with your actual BottomNavBar if you have one
-      bottomNavigationBar: const _DummyBottomNavBar(),
-      body: Container(
-        // This container provides the main content area background (usually white or dark grey)
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: currentScaffoldBg, // Use theme's scaffold background
-          // Apply rounding only if AppBar is a different color, otherwise it blends
-          borderRadius: currentAppBarColor != currentScaffoldBg
-              ? const BorderRadius.only(
-                  topLeft: Radius.circular(30.0),
-                  topRight: Radius.circular(30.0),
-                )
-              : null,
-        ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(), // Optional: Nice scroll physics
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 25.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // --- Account Settings Section ---
-                _buildSectionTitle("Account Settings", currentSectionTitleColor),
-                _buildSettingsGroupContainer(
-                  backgroundColor: settingsGroupBg,
-                  children: [
-                    _buildSettingsRow("Name", fgColor: settingsGroupFg, onTap: () => _handleTap("Name")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Gender", fgColor: settingsGroupFg, onTap: () => _handleTap("Gender")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Birth date", fgColor: settingsGroupFg, onTap: () => _handleTap("Birth date")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Use of any substance", fgColor: settingsGroupFg, onTap: () => _handleTap("Substance Use")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Email", fgColor: settingsGroupFg, onTap: () => _handleTap("Email")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Password", fgColor: settingsGroupFg, onTap: () => _handleTap("Password")),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsRow("Two-Factor Authentication", fgColor: settingsGroupFg, isLast: true, onTap: () => _handleTap("2FA")),
-                  ],
-                ),
-                const SizedBox(height: 25),
+      // --- Use your Bottom Navigation Bar ---
+      // Ensure AppBottomNavBar is also theme-aware if necessary
+      bottomNavigationBar: const AppBottomNavBar(),
 
-                // --- Notification Section ---
-                _buildSectionTitle("Notification", currentSectionTitleColor),
-                _buildSettingsGroupContainer(
-                   backgroundColor: settingsGroupBg,
-                   children: [
-                    _buildSettingsToggleRow(
-                      "Reminders (activity/medicine)",
-                      _remindersEnabled,
-                      (value) => setState(() => _remindersEnabled = value),
-                      fgColor: settingsGroupFg // Use fixed white for items inside blue container
-                    ),
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildSettingsToggleRow(
-                      "Streak Tracker",
-                      _streakTrackerEnabled,
-                      (value) => setState(() => _streakTrackerEnabled = value),
-                      isLast: true,
-                      fgColor: settingsGroupFg // Use fixed white
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
+      // Body uses theme background implicitly via Scaffold
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 25.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- Account Settings Section ---
+              _buildSectionTitle("Account Settings", currentSectionTitleColor),
+              _buildSettingsGroupContainer(
+                backgroundColor: currentSettingsGroupBg,
+                children: [
+                  _buildSettingsRow("Name", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Name")),
+                  _buildSettingsRow("Gender", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Gender")),
+                  _buildSettingsRow("Birth date", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Birth date")),
+                  _buildSettingsRow("Use of any substance", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Substance Use")),
+                  _buildSettingsRow("Email", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Email")),
+                  _buildSettingsRow("Password", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), dividerColor: currentDividerColor, onTap: () => _handleTap("Password")),
+                  _buildSettingsRow("Two-Factor Authentication", fgColor: currentSettingsGroupFg, hintColor: currentSettingsGroupFg.withOpacity(0.7), isLast: true, onTap: () => _handleTap("2FA")), // No divider for last
+                ],
+              ),
+              const SizedBox(height: 25),
 
-                // --- App Preferences Section ---
-                _buildSectionTitle("App Preferences", currentSectionTitleColor),
-                _buildSettingsGroupContainer(
-                   backgroundColor: settingsGroupBg,
-                   children: [
-                    // *** THEME TOGGLE ROW ***
-                    _buildSettingsToggleRow(
-                      "Light mode/Dark mode",
-                      themeNotifier.isDarkMode, // <-- Read value from notifier
-                      (value) {
-                        // Update the theme via the notifier
-                        themeNotifier.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-                      },
-                       fgColor: settingsGroupFg // Use fixed white
-                    ),
-                    // *************************
-                    _buildDivider(color: settingsGroupFg.withOpacity(0.3)),
-                    _buildLanguageDropdownRow(
-                      "Language",
-                      _selectedLanguage,
-                      _languages,
-                      (newValue) {
-                        if (newValue != null) {
-                           setState(() => _selectedLanguage = newValue);
-                           // TODO: Add logic to actually change app language here
-                           // e.g., using EasyLocalization, GetX localization, or standard Intl
-                           print("Language changed to: $newValue");
-                           // Example: context.setLocale(Locale(newValue == 'English' ? 'en' : 'ar'));
-                        }
-                      },
-                      isLast: true,
-                      fgColor: settingsGroupFg, // Text 'Language' and selected item color
-                      dropdownBgColor: currentDropdownBgColor, // Background of popup menu
-                      dropdownFgColor: currentDropdownFgColor // Text color inside popup menu
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
-
-                // --- Self Assessment Section ---
-                _buildSectionTitle("Self Assessment", currentSectionTitleColor),
-                _buildSettingsButton( // This button uses the blue style
-                    "Edit Self Assessment",
-                    () => _handleTap("Edit Self Assessment"),
-                    bgColor: settingsGroupBg,
-                    fgColor: settingsGroupFg,
-                    showArrow: true
-                ),
-                const SizedBox(height: 25),
-
-                // --- Progress Sharing Section ---
-                _buildSectionTitle("Progress sharing", currentSectionTitleColor),
-                 _buildSettingsGroupContainer(
-                   backgroundColor: settingsGroupBg,
-                   children: [
-                    _buildSettingsToggleRow(
-                      "share progress with Dr",
-                       _shareProgressEnabled,
-                      (value) => setState(() => _shareProgressEnabled = value),
-                      isLast: true,
-                      fgColor: settingsGroupFg // Use fixed white
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
-
-                 // --- Contact Support Section ---
-                _buildSectionTitle("Contact Support", currentSectionTitleColor),
-                _buildSettingsButton( // This button uses the blue style
-                  "Call app support",
-                   () => _handleTap("Call Support"),
-                  bgColor: settingsGroupBg,
-                  fgColor: settingsGroupFg,
-                  icon: Icons.phone_outlined
-                ),
-                const SizedBox(height: 35),
-
-                 // --- Log Out Section ---
-                Center(
-                  child: _buildSettingsButton( // This button uses the blue style
-                    "Log out",
-                    () => _handleTap("Log Out"),
-                    // Consider a different color for logout for emphasis?
-                    // bgColor: Colors.redAccent.withOpacity(0.8),
-                    // fgColor: Colors.white,
-                    bgColor: settingsGroupBg, // Sticking to blue for now
-                    fgColor: settingsGroupFg,
-                    isLogout: true // Might affect styling like border radius
+              // --- Notification Section ---
+              _buildSectionTitle("Notification", currentSectionTitleColor),
+              _buildSettingsGroupContainer(
+                 backgroundColor: currentSettingsGroupBg,
+                 children: [
+                  _buildSettingsToggleRow(
+                    "Reminders (activity/medicine)",
+                    _remindersEnabled,
+                    (value) => setState(() => _remindersEnabled = value),
+                    fgColor: currentSettingsGroupFg, // Text color
+                    dividerColor: currentDividerColor,
+                    // Pass themed toggle colors
+                    activeThumbColor: currentActiveThumbColor,
+                    activeTrackColor: currentActiveTrackColor,
+                    inactiveThumbColor: currentInactiveThumbColor,
+                    inactiveTrackColor: currentInactiveTrackColor,
                   ),
+                  _buildSettingsToggleRow(
+                    "Streak Tracker",
+                    _streakTrackerEnabled,
+                    (value) => setState(() => _streakTrackerEnabled = value),
+                    fgColor: currentSettingsGroupFg, // Text color
+                    isLast: true, // No divider
+                    // Pass themed toggle colors
+                    activeThumbColor: currentActiveThumbColor,
+                    activeTrackColor: currentActiveTrackColor,
+                    inactiveThumbColor: currentInactiveThumbColor,
+                    inactiveTrackColor: currentInactiveTrackColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+              // --- App Preferences Section ---
+              _buildSectionTitle("App Preferences", currentSectionTitleColor),
+              _buildSettingsGroupContainer(
+                 backgroundColor: currentSettingsGroupBg,
+                 children: [
+                  _buildSettingsToggleRow(
+                    "Dark Mode", // Simpler label
+                    themeNotifier.isDarkMode,
+                    (value) {
+                      themeNotifier.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+                    },
+                     fgColor: currentSettingsGroupFg, // Text color
+                     dividerColor: currentDividerColor,
+                     // Pass themed toggle colors
+                     activeThumbColor: currentActiveThumbColor,
+                     activeTrackColor: currentActiveTrackColor,
+                     inactiveThumbColor: currentInactiveThumbColor,
+                     inactiveTrackColor: currentInactiveTrackColor,
+                  ),
+                  _buildLanguageDropdownRow(
+                    "Language",
+                    _selectedLanguage,
+                    _languages,
+                    (newValue) {
+                      if (newValue != null && newValue != _selectedLanguage) {
+                         setState(() => _selectedLanguage = newValue);
+                         // TODO: Implement actual language change logic here
+                         print("Language changed to: $newValue. Implement app localization.");
+                      }
+                    },
+                    isLast: true, // No divider
+                    fgColor: currentSettingsGroupFg, // Label and selected item color
+                    hintColor: currentSettingsGroupFg.withOpacity(0.7), // Arrow color
+                    dropdownPopupBgColor: currentDropdownPopupBgColor, // Menu background
+                    dropdownItemFgColor: currentDropdownItemFgColor  // Menu item text color
+                  ),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+              // --- Self Assessment Section ---
+              _buildSectionTitle("Self Assessment", currentSectionTitleColor),
+              _buildSettingsButton(
+                  "Edit Self Assessment",
+                  () => _handleTap("Edit Self Assessment"),
+                  bgColor: currentSettingsGroupBg,
+                  fgColor: currentSettingsGroupFg,
+                  showArrow: true
+              ),
+              const SizedBox(height: 25),
+
+              // --- Progress Sharing Section ---
+              _buildSectionTitle("Progress Sharing", currentSectionTitleColor), // Corrected typo
+               _buildSettingsGroupContainer(
+                 backgroundColor: currentSettingsGroupBg,
+                 children: [
+                  _buildSettingsToggleRow(
+                    "Share Progress with Dr.", // Slightly better phrasing
+                     _shareProgressEnabled,
+                    (value) => setState(() => _shareProgressEnabled = value),
+                    fgColor: currentSettingsGroupFg, // Text color
+                    isLast: true, // No divider
+                    // Pass themed toggle colors
+                    activeThumbColor: currentActiveThumbColor,
+                    activeTrackColor: currentActiveTrackColor,
+                    inactiveThumbColor: currentInactiveThumbColor,
+                    inactiveTrackColor: currentInactiveTrackColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 25),
+
+               // --- Contact Support Section ---
+              _buildSectionTitle("Contact Support", currentSectionTitleColor),
+              _buildSettingsButton(
+                "Call App Support", // Slightly better phrasing
+                 () => _handleTap("Call Support"),
+                bgColor: currentSettingsGroupBg,
+                fgColor: currentSettingsGroupFg,
+                icon: Icons.phone_outlined
+              ),
+              const SizedBox(height: 35),
+
+               // --- Log Out Section ---
+              Center(
+                child: _buildSettingsButton(
+                  "Log out",
+                  _logout, // Calls the function with the confirmation dialog
+                  bgColor: currentSettingsGroupBg,
+                  fgColor: currentSettingsGroupFg,
+                  isLogout: true // Keeps the specific styling for logout button
                 ),
-                const SizedBox(height: 20), // Padding at the bottom
-              ],
-            ),
+              ),
+              const SizedBox(height: 30), // More padding at the bottom
+            ],
           ),
         ),
       ),
     );
   } // End build
 
-  // --- Helper Widgets ---
+  // --- Helper Widgets (Updated for Theme Colors and Dividers) ---
 
-  // Builds the title for a section (e.g., "Account Settings")
   Widget _buildSectionTitle(String title, Color textColor) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0, left: 5.0),
+      padding: const EdgeInsets.only(bottom: 12.0, left: 5.0, top: 10.0), // Added top padding
       child: Text(
-        title,
-        style: TextStyle(
-            fontSize: 16,
+        title.toUpperCase(), // Optional: Uppercase for emphasis
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: textColor, // Uses passed theme color
+            fontWeight: FontWeight.w600, // Make slightly bolder than default titleSmall
+            letterSpacing: 0.8, // Optional spacing
+        ) ?? TextStyle( // Fallback style
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: textColor), // Use themed color passed as argument
+            color: textColor,
+            letterSpacing: 0.8,
+        ),
       ),
     );
   }
 
-  // Builds the blue container with rounded corners for grouping settings items
   Widget _buildSettingsGroupContainer({required List<Widget> children, required Color backgroundColor}) {
+     final isDark = Provider.of<ThemeNotifier>(context, listen: false).isDarkMode;
+     final theme = Theme.of(context);
      return Container(
       decoration: BoxDecoration(
-        color: backgroundColor, // Use passed background color (likely fixed blue)
-        borderRadius: BorderRadius.circular(15.0), // Match image rounding
+        color: backgroundColor, // Uses passed theme color
+        borderRadius: BorderRadius.circular(15.0),
+        // Use theme's shadow or border definition
+        border: isDark ? Border.all(color: theme.dividerColor.withOpacity(0.5), width: 0.5) : null,
+        boxShadow: isDark ? null : (theme.cardTheme.shadowColor != null ? [
+            BoxShadow(
+                color: theme.cardTheme.shadowColor!,
+                // *** FIXED num to int/double issue ***
+                spreadRadius: theme.cardTheme.elevation?.toDouble() ?? 1.0,
+                blurRadius: (theme.cardTheme.elevation?.toDouble() ?? 0.0) == 0.0 ? 0.0 : (theme.cardTheme.elevation?.toDouble() ?? 5.0) * 2.0,
+                offset: const Offset(0, 2),
+            )
+          ] : [ // Default light shadow if theme doesn't specify
+             BoxShadow(
+                color: Colors.grey.withOpacity(0.15),
+                spreadRadius: 1.0, // Use double
+                blurRadius: 5.0,  // Use double
+                offset: const Offset(0, 2),
+            ),
+          ]),
       ),
-      child: ClipRRect( // Clip children to rounded corners
+      child: ClipRRect( // Ensures children conform to rounded corners
         borderRadius: BorderRadius.circular(15.0),
         child: Column(
           children: children,
@@ -270,254 +393,313 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     );
   }
 
-  // Builds a standard settings row with text and a right arrow
-  Widget _buildSettingsRow(String title, {required Color fgColor, bool isLast = false, required VoidCallback onTap}) {
-    return Material( // Use Material for InkWell splash effect
-      color: Colors.transparent, // Inherit background from container
+  // Updated to include optional divider and hintColor for arrow
+  Widget _buildSettingsRow(String title, {required Color fgColor, required Color hintColor, Color? dividerColor, bool isLast = false, required VoidCallback onTap}) {
+    return Material( // Needed for InkWell splash effect
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15), // Adjust padding
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                    fontSize: 15,
-                    color: fgColor, // Use passed foreground color (likely fixed white)
-                    fontWeight: FontWeight.w500),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded( // Allow text to wrap if long
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                          fontSize: 15,
+                          color: fgColor, // Use passed theme color
+                          fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis, // Handle overflow
+                    ),
+                  ),
+                  const SizedBox(width: 8), // Space before arrow
+                  Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: hintColor // Use hint color for arrow
+                  ),
+                ],
               ),
-              Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: fgColor // Use passed foreground color (likely fixed white)
-              ),
-            ],
-          ),
+            ),
+            if (!isLast && dividerColor != null) // Add divider if not last and color provided
+              _buildDivider(color: dividerColor, indent: 16, endIndent: 16),
+          ],
         ),
       ),
     );
   }
 
-  // Builds a settings row with text and a toggle switch
-  Widget _buildSettingsToggleRow(String title, bool value, ValueChanged<bool> onChanged, {required Color fgColor, bool isLast = false}) {
-     // Define toggle colors specifically for the blue container background
-     final Color activeThumbColor = fgColor; // White thumb
-     final Color activeTrackColor = fgColor.withOpacity(0.5); // Semi-transparent white track
-     final Color inactiveThumbColor = fgColor.withOpacity(0.9); // Slightly dimmer white thumb
-     final Color inactiveTrackColor = fgColor.withOpacity(0.3); // More transparent white track
-
-     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7), // Less vertical padding for toggles
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-           Text(
-             title,
-             style: TextStyle(
-                fontSize: 15,
-                color: fgColor, // Use passed foreground color (likely fixed white)
-                fontWeight: FontWeight.w500),
-           ),
-          Transform.scale( // Make switch slightly smaller if needed
-            scale: 0.9,
-            child: Switch(
-              value: value,
-              onChanged: onChanged,
-              // Use the specifically defined colors for contrast on blue background
-              activeColor: activeThumbColor,
-              activeTrackColor: activeTrackColor,
-              inactiveThumbColor: inactiveThumbColor,
-              inactiveTrackColor: inactiveTrackColor,
-              // Don't use theme colors here as they are designed for the general scaffold background
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ],
-      ),
+  // Updated to include optional divider and accept themed toggle colors
+  Widget _buildSettingsToggleRow(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    required Color fgColor, // Text color
+    Color? dividerColor,    // Divider color
+    bool isLast = false,
+    // Themed toggle colors
+    required Color activeThumbColor,
+    required Color activeTrackColor,
+    required Color inactiveThumbColor,
+    required Color inactiveTrackColor,
+  }) {
+     // Use Material for splash effect on the row (optional)
+     return Material(
+       color: Colors.transparent,
+       child: InkWell(
+         // Optional: Tapping the row toggles the switch
+         onTap: () => onChanged(!value),
+         child: Column(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             Padding(
+              padding: const EdgeInsets.only(left: 16, right: 8, top: 8, bottom: 8), // Adjusted padding
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Expanded( // Allow text to wrap if needed
+                     child: Text(
+                       title,
+                       style: TextStyle(
+                          fontSize: 15,
+                          color: fgColor, // Use passed theme color
+                          fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                     ),
+                   ),
+                   const SizedBox(width: 10), // Space before toggle
+                  Transform.scale(
+                    scale: 0.85, // Make switch slightly smaller
+                    alignment: Alignment.centerRight,
+                    child: Switch(
+                      value: value,
+                      onChanged: onChanged, // Direct interaction still works
+                      activeColor: activeThumbColor, // Thumb color when ON
+                      activeTrackColor: activeTrackColor, // Track color when ON
+                      inactiveThumbColor: inactiveThumbColor, // Thumb color when OFF
+                      inactiveTrackColor: inactiveTrackColor, // Track color when OFF
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // Minimize tap area slightly
+                    ),
+                  ),
+                ],
+              ),
+             ),
+             if (!isLast && dividerColor != null) // Add divider if not last and color provided
+                _buildDivider(color: dividerColor, indent: 16, endIndent: 16),
+           ],
+         ),
+       ),
      );
   }
 
-  // Builds the language selection row with a dropdown
+ // Updated to include optional divider and themed dropdown colors
   Widget _buildLanguageDropdownRow(
       String title,
       String currentValue,
       List<String> items,
       ValueChanged<String?> onChanged,
-      {required Color fgColor,
-      required Color dropdownBgColor, // Background color of the popup menu
-      required Color dropdownFgColor, // Text color inside the popup menu
-      bool isLast = false})
+      { required Color fgColor, // Label color and selected item color
+        required Color hintColor, // Arrow icon color
+        Color? dividerColor, // Divider color
+        required Color dropdownPopupBgColor, // Background of the menu
+        required Color dropdownItemFgColor, // Text color inside the menu
+        bool isLast = false})
   {
-      return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 10, top: 8, bottom: 8), // Adjust padding for dropdown alignment
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      final theme = Theme.of(context);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            title, // e.g., "Language"
-            style: TextStyle(
-                fontSize: 15,
-                color: fgColor, // Use passed color (likely fixed white)
-                fontWeight: FontWeight.w500),
-          ),
-          Theme( // Override dropdown theme specifically for popup background
-            data: Theme.of(context).copyWith(
-              canvasColor: dropdownBgColor, // Use theme-aware popup background color
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 10, top: 8, bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                      fontSize: 15,
+                      color: fgColor, // Use passed theme color for label
+                      fontWeight: FontWeight.w500),
+                ),
+                // Dropdown wrapped in Theme to control its popup menu color
+                Theme(
+                  data: theme.copyWith(
+                    canvasColor: dropdownPopupBgColor, // Sets background of the dropdown menu
+                    // Use splash/highlight from the main theme or override if needed
+                    splashColor: theme.splashColor,
+                    highlightColor: theme.highlightColor,
+                    popupMenuTheme: theme.popupMenuTheme.copyWith( // Ensure popup inherits theme
+                      color: dropdownPopupBgColor,
+                      textStyle: theme.popupMenuTheme.textStyle?.copyWith(color: dropdownItemFgColor)
+                                  ?? TextStyle(color: dropdownItemFgColor, fontSize: 15, fontWeight: FontWeight.w500)
+                    )
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: currentValue,
+                      icon: Icon(Icons.keyboard_arrow_down, color: hintColor), // Use hint color for icon
+elevation: (theme.popupMenuTheme.elevation ?? 2.0).toInt(), // Convert double? or fallback double to int                      // Style for the items *inside* the dropdown menu
+                      style: theme.popupMenuTheme.textStyle?.copyWith(color: dropdownItemFgColor)
+                             ?? TextStyle(color: dropdownItemFgColor, fontSize: 15, fontWeight: FontWeight.w500),
+
+                      // Builder for the *selected* item displayed when dropdown is closed
+                      selectedItemBuilder: (BuildContext context) {
+                        return items.map<Widget>((String item) {
+                          return Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 4.0),
+                                child: Text(
+                                  item,
+                                  style: TextStyle( // Use main FG color for selected item text
+                                      color: fgColor,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ));
+                        }).toList();
+                      },
+                      onChanged: onChanged,
+                      items: items.map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value), // Text uses the 'style' defined above
+                        );
+                      }).toList(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: DropdownButtonHideUnderline( // Hide default underline
-              child: DropdownButton<String>(
-                value: currentValue,
-                icon: Icon(Icons.keyboard_arrow_down, color: fgColor), // Arrow color (fixed white)
-                elevation: 2,
-                style: TextStyle( // Style for items in dropdown LIST
-                    color: dropdownFgColor, // Use theme-aware text color for list items
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500),
-                selectedItemBuilder: (BuildContext context) { // Style for the SELECTED item shown in the button itself
-                  return items.map<Widget>((String item) {
-                    return Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding( // Add padding to prevent text touching arrow
-                          padding: const EdgeInsets.only(right: 4.0),
-                          child: Text(
-                            item, // e.g., "English" or "Arabic"
-                            style: TextStyle(
-                                color: fgColor, // Use fixed white for selected item text
-                                fontWeight: FontWeight.w500),
-                          ),
-                        ));
-                  }).toList();
-                },
-                onChanged: onChanged,
-                items: items.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value), // Text shown in the popup list
-                  );
-                }).toList(),
-              ),
-            ),
           ),
+          if (!isLast && dividerColor != null) // Add divider if not last and color provided
+              _buildDivider(color: dividerColor, indent: 16, endIndent: 16),
         ],
-      ),
-    );
+      );
   }
 
-  // Builds the standalone buttons (Edit Self Assessment, Call Support, Logout)
+ // *** REVISED VERSION ***
+ // Updated to use passed theme colors and corrected styling approach
  Widget _buildSettingsButton(
      String text,
      VoidCallback onPressed,
-     {required Color bgColor, // Background color (likely fixed blue)
-     required Color fgColor, // Text/Icon color (likely fixed white)
+     {required Color bgColor, // Use passed theme color
+     required Color fgColor, // Use passed theme color
      IconData? icon,
      bool showArrow = false,
      bool isLogout = false})
  {
+    final isDark = Provider.of<ThemeNotifier>(context, listen: false).isDarkMode;
+    final theme = Theme.of(context);
+
+    // Get the base theme style, if any
+    final ButtonStyle? baseThemeStyle = theme.elevatedButtonTheme.style;
+
+    // Create the final style by potentially merging our overrides onto the base
+    // Use copyWith on the base style (or an empty one if base is null)
+    final ButtonStyle finalStyle = (baseThemeStyle ?? const ButtonStyle())
+        .copyWith(
+            backgroundColor: WidgetStateProperty.all(bgColor), // Simple override
+            foregroundColor: WidgetStateProperty.all(fgColor), // Simple override
+            shadowColor: WidgetStateProperty.all(Colors.black26),
+            minimumSize: WidgetStateProperty.all(const Size(double.infinity, 50)),
+            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 16)),
+            shape: WidgetStateProperty.all(
+                RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isLogout ? 25 : 15),
+                )
+            ),
+            splashFactory: InkRipple.splashFactory,
+
+            // *** DEFINE STATE PROPERTIES USING WidgetStateProperty.resolveWith ***
+            overlayColor: WidgetStateProperty.resolveWith<Color?>(
+               (Set<WidgetState> states) {
+                  if (states.contains(WidgetState.pressed)) {
+                     // Use the foreground color with some opacity for the splash effect
+                     return fgColor.withOpacity(0.12);
+                  }
+                  // Return null for default behavior in other states
+                  return null;
+               },
+            ),
+            elevation: WidgetStateProperty.resolveWith<double?>( // Ensure nullable double
+               (Set<WidgetState> states) {
+                  if (states.contains(WidgetState.pressed)) {
+                     return 0.0; // Flatten the button when pressed
+                  }
+                  // Apply a subtle elevation based on light/dark mode
+                  return isDark ? 1.0 : 2.0;
+               },
+            ),
+     ); // End of copyWith
+
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor,
-        foregroundColor: fgColor,
-        elevation: 0, // Flat design like the image
-        minimumSize: const Size(double.infinity, 50), // Full width, standard height
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(
-          // Slightly more rounded for logout, or keep consistent
-          borderRadius: BorderRadius.circular(isLogout ? 25 : 15),
-        ),
-      ),
+      style: finalStyle, // Apply the final merged style
       onPressed: onPressed,
       child: Row(
-        // For 'Edit' and 'Call', push icon/arrow to the right
-        // For 'Logout', center the text (since no icon/arrow is expected)
-        mainAxisAlignment: (icon != null || showArrow)
-            ? MainAxisAlignment.spaceBetween
-            : MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Always space between for consistency
         children: [
-          Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+          // If icon exists, place it first
           if (icon != null)
-            Icon(icon, size: 20, color: fgColor) // Ensure icon uses fgColor
-          else if (showArrow)
-             Icon(Icons.arrow_forward_ios, size: 16, color: fgColor) // Ensure arrow uses fgColor
-          // No else needed for logout as centering handles it
+            Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: Icon(icon, size: 20, color: fgColor), // Icon color matches foreground
+            )
+          else
+            // Add SizedBox to balance row if there's an arrow on the right but no icon here
+            SizedBox(width: showArrow ? (IconTheme.of(context).size ?? 16.0) + 8.0 : 0),
+
+          // Center the text
+          Expanded(
+            child: Text(
+              text,
+              textAlign: icon == null && !showArrow ? TextAlign.center : TextAlign.left, // Center only if no icons/arrows
+              // Text style is primarily controlled by 'foregroundColor' in the style
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)
+            ),
+          ),
+
+          // Show arrow if requested
+          if (showArrow)
+             Padding(
+               padding: const EdgeInsets.only(left: 8.0),
+               child: Icon(
+                 Icons.arrow_forward_ios,
+                 size: 16,
+                 // Use foreground color with opacity for the arrow hint
+                 color: fgColor.withOpacity(0.7)
+               ),
+             )
+           else if (icon == null)
+            // Add SizedBox to balance row if there's an icon on the left but no arrow here
+             const SizedBox(width: 0),
         ],
       ),
     );
-  }
+ }
 
-  // Helper to build the divider between items in a group
-  Widget _buildDivider({required Color color}) {
+
+  // Updated to allow indent/endIndent and use theme defaults potentially
+  Widget _buildDivider({required Color color, double indent = 0, double endIndent = 0}) {
+    final theme = Theme.of(context);
     return Divider(
-      height: 0.5, // Thin divider
-      thickness: 0.5,
-      color: color, // Use passed color (likely semi-transparent white)
-      indent: 16, // Indent from the left edge
-      endIndent: 16, // Indent from the right edge
+      height: theme.dividerTheme.space ?? 0.8,
+      thickness: theme.dividerTheme.thickness ?? 0.5,
+      color: color, // Use passed color override
+      indent: indent,
+      endIndent: endIndent,
     );
   }
 
-
-  // Placeholder handler for taps - Implement actual navigation/actions here
+  // --- Navigation/Action Handler ---
   void _handleTap(String setting) {
     print("Tapped on: $setting");
-    // Example Navigation:
-    // if (setting == "Name") {
-    //   Navigator.push(context, MaterialPageRoute(builder: (_) => EditNameScreen()));
-    // } else if (setting == "Password") {
-    //   Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordScreen()));
-    // } else if (setting == "Log Out") {
-    //   // Show confirmation dialog
-    //   showDialog(
-    //     context: context,
-    //     builder: (context) => AlertDialog(
-    //       title: Text("Log Out"),
-    //       content: Text("Are you sure you want to log out?"),
-    //       actions: [
-    //          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
-    //          TextButton(onPressed: () {
-    //             // Perform actual logout logic (clear session, navigate to login)
-    //             Navigator.pop(context); // Close dialog
-    //             // Example: Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-    //             print("Logout action performed!");
-    //          }, child: Text("Log Out")),
-    //       ],
-    //     )
-    //   );
-    // }
-    // Add cases for other settings...
+    // TODO: Implement navigation or actions for each settings item
   }
+
 } // End of _UserSettingsScreenState
-
-
-// --- Dummy Bottom Nav Bar (Replace with your actual one) ---
-// This is theme-aware
-class _DummyBottomNavBar extends StatelessWidget {
-  const _DummyBottomNavBar({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Use AppBar background color from theme for consistency
-    final navBarColor = Theme.of(context).appBarTheme.backgroundColor;
-    // Define an active/inactive color, potentially theme-aware
-    final activeIconColor = Colors.lightBlueAccent; // Example: Fixed active color
-    final inactiveIconColor = isDark ? Colors.grey[600] : Colors.white.withOpacity(0.7); // Example: Theme-aware inactive
-
-    // Assume first icon is active for demo purposes
-    return Container(
-      height: 65, // Adjust height as needed
-      color: navBarColor,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Icon(Icons.home_outlined, color: activeIconColor, size: 30), // Active
-          Icon(Icons.access_time, color: inactiveIconColor, size: 30),
-          Icon(Icons.assignment_outlined, color: inactiveIconColor, size: 30),
-          Icon(Icons.book_outlined, color: inactiveIconColor, size: 30),
-          Icon(Icons.person_outline, color: inactiveIconColor, size: 30), // Map this to profile route later
-        ],
-      ),
-    );
-  }
-}

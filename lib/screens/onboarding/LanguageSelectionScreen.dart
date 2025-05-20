@@ -2,8 +2,7 @@
 
 import 'dart:math'; // For min()
 import 'package:flutter/material.dart';
-// *** CORRECT: Import the Signup Screen ***
-import '../auth/signupScreen.dart'; // Make sure this path is correct for your project structure
+import '../auth/LoginScreen.dart';
 
 class LanguageSelectionScreen extends StatelessWidget {
   const LanguageSelectionScreen({super.key});
@@ -31,7 +30,9 @@ class LanguageSelectionScreen extends StatelessWidget {
               color: const Color(0xFF276181),
               child: Center(
                 child: Padding(
-                  padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top / 2),
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top / 2,
+                  ),
                   child: Text(
                     'Salam',
                     style: TextStyle(
@@ -89,7 +90,7 @@ class LanguageSelectionScreen extends StatelessWidget {
 
                     Text(
                       'Choose a language to make the app yours!',
-                       textAlign: TextAlign.center,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 16 * scaleFactor,
@@ -118,19 +119,22 @@ class LanguageSelectionScreen extends StatelessWidget {
   }
 
   // --- Button builder method ---
-  Widget _buildLanguageButton(BuildContext context, String text, double scaleFactor) {
+  Widget _buildLanguageButton(
+    BuildContext context,
+    String text,
+    double scaleFactor,
+  ) {
     return SizedBox(
       width: 250 * scaleFactor,
       height: 60 * scaleFactor,
       child: ElevatedButton(
         // *** CORRECT: Navigation logic is here ***
         onPressed: () {
-          // TODO: Add logic here to actually SET the chosen language preference if needed
-          print('Selected Language: $text'); // Optional: for debugging
-
-          // *** CORRECT: Navigate to signupScreen ***
-          Navigator.of(context).pushReplacement( // Use pushReplacement so user can't go back
-            MaterialPageRoute(builder: (context) => const SignupScreen()), // Ensure 'signupScreen' class name matches exactly
+          Navigator.of(context).pushReplacement(
+            // Use pushReplacement so user can't go back
+            MaterialPageRoute(
+              builder: (context) => const LoginScreen(),
+            ), // Ensure 'signupScreen' class name matches exactly
           );
         },
         style: ElevatedButton.styleFrom(

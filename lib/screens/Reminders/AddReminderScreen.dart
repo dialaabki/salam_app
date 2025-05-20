@@ -1,30 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 1. Import Provider
-import '../../models/reminder.dart';
-import 'AddMedicineScreen.dart'; // Make sure this screen is also theme-aware
-import 'AddActivityScreen.dart'; // Make sure this screen is also theme-aware
-import '../../providers/theme_provider.dart'; // 2. Import ThemeNotifier
+// No longer needs provider directly unless used for other state
+// import 'package:provider/provider.dart';
 
-// --- Define Colors (Replaced by theme where applicable) ---
-// const Color mainAppColor = Color(0xFF5588A4); // Will use theme.primaryColor
+// Import the screens to navigate to
+import 'AddMedicineScreen.dart';
+import 'AddActivityScreen.dart';
+// Keep for theme access if needed directly (though Theme.of(context) is usually sufficient)
+// import '../../providers/theme_provider.dart';
 
 class AddReminderScreen extends StatelessWidget {
-  final Function(Reminder) addReminderCallback;
-
-  const AddReminderScreen({Key? key, required this.addReminderCallback}) : super(key: key);
+  // Constructor without the callback
+  const AddReminderScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // --- 3. Access Theme ---
+    // Access Theme data
     final theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    // --- End Theme Access ---
+    // final bool isDark = theme.brightness == Brightness.dark; // Not directly used here anymore
 
     final screenHeight = MediaQuery.of(context).size.height;
     final topImageHeight = screenHeight * 0.25;
 
+    // Define button style based on theme for reusability
+    final ButtonStyle choiceButtonStyle = ElevatedButton.styleFrom(
+      backgroundColor: theme.colorScheme.primary, // Use theme primary color
+      foregroundColor: theme.colorScheme.onPrimary, // Text/icon color on primary
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+      elevation: 3,
+      shadowColor: Colors.black.withOpacity(0.2), // Optional subtle shadow
+    );
+
     return Scaffold(
-      // 4. Use theme primary color for the background behind the top image
+      // Use theme primary color for the background behind the top image
       backgroundColor: theme.colorScheme.primary,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -44,24 +53,24 @@ class AddReminderScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.transparent, // Keep transparent AppBar
         elevation: 0,
-        // 5. Use theme's primary icon theme color OR fallback white for back button
+        // Use theme's primary icon theme color OR fallback white for back button
         iconTheme: theme.primaryIconTheme.copyWith(color: Colors.white), // Ensure back button is white on image
       ),
       body: Column(
         children: [
-          // --- 1. Top Image Area (No theme changes needed) ---
+          // Top Image Area (No theme changes needed)
           Container(
             height: topImageHeight,
             width: double.infinity,
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage("assets/images/bg_reminders.png"),
+                image: AssetImage("assets/images/bg_reminders.png"), // Ensure this image exists
                 fit: BoxFit.cover,
               ),
             ),
           ),
 
-          // --- 2. Content Container Area (Theme Aware) ---
+          // Content Container Area (Theme Aware)
           Expanded(
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
@@ -71,7 +80,7 @@ class AddReminderScreen extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  // 6. Use theme surface color for the content background
+                  // Use theme surface color for the content background
                   color: theme.colorScheme.surface,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(25.0),
@@ -81,42 +90,33 @@ class AddReminderScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start, // Align content towards top
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // --- Question Text ---
+                      const SizedBox(height: 20), // Add some space at the top
+                      // Question Text
                       Text(
                         'What do you need a reminder for?',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
-                          // 7. Use theme text color on surface
-                          color: theme.colorScheme.onSurface.withOpacity(0.8), // Slightly muted
+                          // Use theme text color on surface
+                          color: theme.colorScheme.onSurface.withOpacity(0.85), // Slightly less muted
                         ),
                       ),
                       const SizedBox(height: 45),
 
                       // --- Medicine Button ---
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          // 8. Use theme colors for button
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0)
-                          ),
-                          elevation: 3,
-                        ),
+                        style: choiceButtonStyle, // Apply shared style
                         child: const Text('Medicine'),
                         onPressed: () {
-                          // Ensure AddMedicineScreen is theme aware
+                          // Navigate to AddMedicineScreen (no callback needed)
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AddMedicineScreen(addReminderCallback: addReminderCallback),
+                              builder: (context) => const AddMedicineScreen(),
                             ),
                           );
                         },
@@ -125,29 +125,19 @@ class AddReminderScreen extends StatelessWidget {
 
                       // --- Activity Button ---
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          // 9. Use theme colors for button
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0)
-                          ),
-                          elevation: 3,
-                        ),
+                        style: choiceButtonStyle, // Apply shared style
                         child: const Text('Activity'),
                         onPressed: () {
-                          // Ensure AddActivityScreen is theme aware
+                          // Navigate to AddActivityScreen (no callback needed)
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AddActivityScreen(addReminderCallback: addReminderCallback),
+                              builder: (context) => const AddActivityScreen(),
                             ),
                           );
                         },
                       ),
-                       const Spacer(),
+                       const Spacer(), // Pushes content up if space allows
                     ],
                   ),
                 ),

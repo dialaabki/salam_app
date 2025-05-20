@@ -2,15 +2,17 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 // --- ADD IMPORTS for the specific signup screens ---
-import 'UserSignUpScreen.dart';   // Import the User sign up screen
-import 'DoctorSignUpScreen.dart';  // Import the Doctor sign up screen
+import 'UserSignUpScreen.dart'; // Import the User sign up screen
+import 'DoctorSignUpScreen.dart'; // Import the Doctor sign up screen
 
 class SignupScreen extends StatelessWidget {
   // --- Ensure this class name matches the file name (if it was lowercase 's' before) ---
   // If your actual class name IS 'signupScreen', keep it lowercase here.
   // But convention is UpperCamelCase 'SignupScreen'.
 
-  const SignupScreen({super.key}); // Use standard convention if class name is SignupScreen
+  const SignupScreen({
+    super.key,
+  }); // Use standard convention if class name is SignupScreen
 
   @override
   Widget build(BuildContext context) {

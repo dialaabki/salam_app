@@ -1,13 +1,24 @@
+// ocdscreen.dart
 import 'package:flutter/material.dart';
+import 'dart:convert'; // Keep for potential future use
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Import keys from SelfAssessmentScreen
+// Adjust the import path if necessary
+import 'SelfAssessmentScreen.dart'
+    show keyOCD, firestoreCollection, fieldPartialSaves;
 
 class OCDScreen extends StatefulWidget {
-  const OCDScreen({super.key});
+  final Map<String, dynamic>? initialState;
+  const OCDScreen({super.key, this.initialState});
 
   @override
   State<OCDScreen> createState() => _OCDScreenState();
 }
 
 class _OCDScreenState extends State<OCDScreen> {
+  // --- UI Styling Constants ---
   final Color _primaryColor = const Color(0xFF5588A4);
   final Color _borderColor = const Color(0xFF276181);
   final Color _inactiveColor = Colors.grey.shade400;
@@ -16,12 +27,18 @@ class _OCDScreenState extends State<OCDScreen> {
   final Color _optionTextColor = Colors.black54;
   final Color _checklistLabelColor = Colors.grey.shade600;
 
-  // Answers for Q1-10 (severity) and Q15-18 (yes/no), total 14
-  final List<int?> _severityAndFinalAnswers = List.filled(14, null);
-  // Answers for checklist items Q1-11 (IDs 11-21)
-  late Map<int, Map<String, bool>> _checklistAnswers;
+  // --- State Variables ---
+  List<int?> _severityAndFinalAnswers = List.filled(14, null);
+  Map<int, Map<String, bool>> _checklistAnswers = {};
 
-  // Combined questions list (remains the same as provided)
+  // --- Firebase Instances and State ---
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  User? _currentUser;
+  DocumentReference? _userProgressDocRef;
+  bool _isSaving = false;
+
+  // --- Questions Data ---
   final List<Map<String, dynamic>> _questions = [
     {
       'id': 1,
@@ -29,24 +46,24 @@ class _OCDScreenState extends State<OCDScreen> {
       'question':
           'Q1. How much of your time is occupied by obsessive thoughts?',
       'options': [
-        'None',
-        'Less than 1 hr/day...',
-        '1 to 3 hrs/day...',
-        'Greater than 3 and up to 8 hrs/day...',
-        'Greater than 8 hrs/day...',
+        'None (0)',
+        'Less than 1 hr/day... (1)',
+        '1 to 3 hrs/day... (2)',
+        'Greater than 3 and up to 8 hrs/day... (3)',
+        'Greater than 8 hrs/day... (4)',
       ],
     },
     {
       'id': 2,
       'type': 'multiple_choice_5',
       'question':
-          'Q2. How do obsessive thoughts impact your daily responsibilities?',
+          'Q2. How much do obsessive thoughts interfere with your social, work, or role functioning?',
       'options': [
-        'None',
-        'Slight interference...',
-        'Definite interference...',
-        'Causes substantial impairment...',
-        'Incapacitating',
+        'None (0)',
+        'Slight interference... (1)',
+        'Definite interference... (2)',
+        'Causes substantial impairment... (3)',
+        'Incapacitating (4)',
       ],
     },
     {
@@ -54,11 +71,11 @@ class _OCDScreenState extends State<OCDScreen> {
       'type': 'multiple_choice_5',
       'question': 'Q3. How much distress do your obsessive thoughts cause you?',
       'options': [
-        'None',
-        'Not too disturbing',
-        'Disturbing, but still manageable',
-        'Very disturbing',
-        'Near constant and disabling distress',
+        'None (0)',
+        'Not too disturbing (1)',
+        'Disturbing, but still manageable (2)',
+        'Very disturbing (3)',
+        'Near constant and disabling distress (4)',
       ],
     },
     {
@@ -67,11 +84,11 @@ class _OCDScreenState extends State<OCDScreen> {
       'question':
           'Q4. How much of an effort do you make to resist the obsessive thoughts?',
       'options': [
-        'Try to resist all the time',
-        'Try to resist most...',
-        'Make some effort...',
-        'Yield to all obsessions...',
-        'Completely and willingly yield...',
+        'Try to resist all the time (0)',
+        'Try to resist most... (1)',
+        'Make some effort... (2)',
+        'Yield to all obsessions... (3)',
+        'Completely and willingly yield... (4)',
       ],
     },
     {
@@ -80,11 +97,11 @@ class _OCDScreenState extends State<OCDScreen> {
       'question':
           'Q5. How much control do you have over your obsessive thoughts?',
       'options': [
-        'Complete control',
-        'Usually able to stop...',
-        'Sometimes able to stop...',
-        'Rarely successful...',
-        'Obsessions are completely involuntary',
+        'Complete control (0)',
+        'Usually able to stop... (1)',
+        'Sometimes able to stop... (2)',
+        'Rarely successful... (3)',
+        'Obsessions are completely involuntary (4)',
       ],
     },
     {
@@ -93,37 +110,37 @@ class _OCDScreenState extends State<OCDScreen> {
       'question':
           'Q6. How much time do you spend performing compulsive behaviors?',
       'options': [
-        'None',
-        'Less than 1 hr/day...',
-        'From 1 to 3 hrs/day...',
-        'More than 3 and up to 8 hrs/day...',
-        'More than 8 hrs/day...',
+        'None (0)',
+        'Less than 1 hr/day... (1)',
+        'From 1 to 3 hrs/day... (2)',
+        'More than 3 and up to 8 hrs/day... (3)',
+        'More than 8 hrs/day... (4)',
       ],
     },
     {
       'id': 7,
       'type': 'multiple_choice_5',
       'question':
-          'Q7. How much do your compulsive behaviors interfere with your work, school, social activities?',
+          'Q7. How much do your compulsive behaviors interfere with your work, school, social, or role functioning?',
       'options': [
-        'None',
-        'Slight interference...',
-        'Definite interference...',
-        'Causes substantial impairment...',
-        'Incapacitating',
+        'None (0)',
+        'Slight interference... (1)',
+        'Definite interference... (2)',
+        'Causes substantial impairment... (3)',
+        'Incapacitating (4)',
       ],
     },
     {
       'id': 8,
       'type': 'multiple_choice_5',
       'question':
-          'Q8. How anxious would you become if prevented from performing your compulsion(s)?',
+          'Q8. How anxious/distressed would you become if prevented from performing your compulsion(s)?',
       'options': [
-        'None',
-        'Only slightly anxious...',
-        'Anxiety would mount...',
-        'Prominent and very disturbing...',
-        'Incapacitating anxiety...',
+        'None (0)',
+        'Only slightly anxious... (1)',
+        'Anxiety would mount... (2)',
+        'Prominent and very disturbing... (3)',
+        'Incapacitating anxiety... (4)',
       ],
     },
     {
@@ -132,117 +149,171 @@ class _OCDScreenState extends State<OCDScreen> {
       'question':
           'Q9. How much of an effort do you make to resist the compulsions?',
       'options': [
-        'Always try to resist',
-        'Try to resist most...',
-        'Make some effort...',
-        'Yield to almost all...',
-        'Completely and willingly yield...',
+        'Always try to resist (0)',
+        'Try to resist most... (1)',
+        'Make some effort... (2)',
+        'Yield to almost all... (3)',
+        'Completely and willingly yield... (4)',
       ],
     },
     {
       'id': 10,
       'type': 'multiple_choice_5',
       'question':
-          'Q10. How strong is the drive to perform the compulsive behavior?',
+          'Q10. How much control do you have over the compulsions? (How strong is the drive?)',
       'options': [
-        'Complete control',
-        'Pressure to perform but usually able...',
-        'Strong pressure...',
-        'Very strong drive...',
-        'Drive completely involuntary...',
+        'Complete control (0)',
+        'Pressure to perform but usually able... (1)',
+        'Strong pressure... (2)',
+        'Very strong drive... (3)',
+        'Drive completely involuntary... (4)',
       ],
     },
     {
       'id': 11,
       'type': 'checklist',
-      'question': 'Q11. (Checklist) Fear of harming self or others.',
-    }, // Renamed for clarity
+      'question':
+          'Q11. (Checklist) Aggressive Obsessions: Fear might harm self',
+    },
     {
       'id': 12,
       'type': 'checklist',
       'question':
-          'Q12. (Checklist) Fear of causing catastrophic events (e.g., accidents, fires).',
+          'Q12. (Checklist) Aggressive Obsessions: Fear might harm others',
     },
     {
       'id': 13,
       'type': 'checklist',
       'question':
-          'Q13. (Checklist) Intrusive or unwanted sexual thoughts or impulses.',
+          'Q13. (Checklist) Aggressive Obsessions: Violent or horrific images',
     },
     {
       'id': 14,
       'type': 'checklist',
       'question':
-          'Q14. (Checklist) Concerns about dirt, germs, or contamination.',
+          'Q14. (Checklist) Aggressive Obsessions: Fear of blurting out obscenities or insults',
     },
     {
       'id': 15,
       'type': 'checklist',
       'question':
-          'Q15. (Checklist) Obsessive thoughts about morality, religion, or perfectionism.',
+          'Q15. (Checklist) Aggressive Obsessions: Fear of doing something else embarrassing',
     },
     {
       'id': 16,
       'type': 'checklist',
       'question':
-          'Q16. (Checklist) Overwhelming need for symmetry, order, or exactness.',
+          'Q16. (Checklist) Contamination Obsessions: Concerns with dirt, germs, or viruses',
     },
     {
       'id': 17,
       'type': 'checklist',
       'question':
-          'Q17. (Checklist) Persistent intrusive thoughts about nonsensical sounds, images, or ideas.',
+          'Q17. (Checklist) Contamination Obsessions: Excessive concern with household items (cleansers, solvents)',
     },
     {
       'id': 18,
       'type': 'checklist',
       'question':
-          'Q18. (Checklist) Excessive cleaning or washing rituals (e.g., handwashing, showering).',
+          'Q18. (Checklist) Contamination Obsessions: Excessive concern with bodily waste or secretions',
     },
     {
       'id': 19,
       'type': 'checklist',
       'question':
-          'Q19. (Checklist) Repeated checking behaviors (e.g., locks, appliances, safety).',
+          'Q19. (Checklist) Sexual Obsessions: Forbidden or perverse sexual thoughts, images, or impulses',
     },
     {
       'id': 20,
       'type': 'checklist',
-      'question':
-          'Q20. (Checklist) Repeating actions (e.g., rereading, rewriting, or retracing steps).',
+      'question': 'Q20. (Checklist) Hoarding/Saving Obsessions',
     },
     {
       'id': 21,
       'type': 'checklist',
-      'question':
-          'Q21. (Checklist) Constant rearranging or ordering of items for symmetry or precision.',
+      'question': 'Q21. (Checklist) Religious Obsessions (Scrupulosity)',
     },
     {
       'id': 22,
-      'type': 'yes_no',
+      'type': 'checklist',
       'question':
-          'Q22. Do your thoughts or behaviors interfere with daily responsibilities (e.g., work, family)?',
-      'options': ['Yes', 'No'],
-    }, // Renumbered for clarity in UI
+          'Q22. (Checklist) Obsession with need for symmetry or exactness',
+    },
     {
       'id': 23,
-      'type': 'yes_no',
+      'type': 'checklist',
       'question':
-          'Q23. Do you feel relief or satisfaction after engaging in compulsive behaviors?',
-      'options': ['Yes', 'No'],
+          'Q23. (Checklist) Miscellaneous Obsessions: Need to know or remember',
     },
     {
       'id': 24,
-      'type': 'yes_no',
+      'type': 'checklist',
       'question':
-          'Q24. Do you avoid certain situations or objects to prevent obsessions or compulsions?',
-      'options': ['Yes', 'No'],
+          'Q24. (Checklist) Miscellaneous Obsessions: Fear of saying certain things',
     },
     {
       'id': 25,
+      'type': 'checklist',
+      'question': 'Q25. (Checklist) Cleaning/Washing Compulsions',
+    },
+    {
+      'id': 26,
+      'type': 'checklist',
+      'question':
+          'Q26. (Checklist) Checking Compulsions (locks, stove, appliances, etc.)',
+    },
+    {
+      'id': 27,
+      'type': 'checklist',
+      'question': 'Q27. (Checklist) Repeating Rituals',
+    },
+    {
+      'id': 28,
+      'type': 'checklist',
+      'question': 'Q28. (Checklist) Counting Compulsions',
+    },
+    {
+      'id': 29,
+      'type': 'checklist',
+      'question': 'Q29. (Checklist) Ordering/Arranging Compulsions',
+    },
+    {
+      'id': 30,
+      'type': 'checklist',
+      'question': 'Q30. (Checklist) Hoarding/Collecting Compulsions',
+    },
+    {
+      'id': 31,
+      'type': 'checklist',
+      'question':
+          'Q31. (Checklist) Miscellaneous Compulsions (e.g., excessive list making)',
+    },
+    {
+      'id': 32,
       'type': 'yes_no',
       'question':
-          'Q25. Do you feel your life is being controlled by these thoughts or behaviors?',
+          'Q32. Do your thoughts or behaviors interfere with daily responsibilities (e.g., work, family)?',
+      'options': ['Yes', 'No'],
+    },
+    {
+      'id': 33,
+      'type': 'yes_no',
+      'question':
+          'Q33. Do you feel relief or satisfaction after engaging in compulsive behaviors?',
+      'options': ['Yes', 'No'],
+    },
+    {
+      'id': 34,
+      'type': 'yes_no',
+      'question':
+          'Q34. Do you avoid certain situations or objects to prevent obsessions or compulsions?',
+      'options': ['Yes', 'No'],
+    },
+    {
+      'id': 35,
+      'type': 'yes_no',
+      'question':
+          'Q35. Do you feel your life is being controlled by these thoughts or behaviors?',
       'options': ['Yes', 'No'],
     },
   ];
@@ -250,100 +321,311 @@ class _OCDScreenState extends State<OCDScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize checklist answers map
     _checklistAnswers = {
       for (var q in _questions)
         if (q['type'] == 'checklist')
           q['id'] as int: {'current': false, 'past': false},
     };
+    _currentUser = _auth.currentUser;
+    if (_currentUser != null) {
+      _userProgressDocRef = _firestore
+          .collection(firestoreCollection)
+          .doc(_currentUser!.uid);
+      _initializeState();
+    } else {
+      print("Error: CurrentUser is null in OCDScreen initState");
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Error: User not logged in."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      });
+    }
   }
 
-  // Helper to map question ID to the correct index in _severityAndFinalAnswers
-  int _getSeverityAnswerIndex(int questionId) {
-    if (questionId >= 1 && questionId <= 10) {
-      // Q1-10 map to indices 0-9
-      return questionId - 1;
-    } else if (questionId >= 22 && questionId <= 25) {
-      // Q22-25 map to indices 10-13
-      return questionId - 22 + 10;
+  void _initializeState() {
+    if (widget.initialState != null && mounted) {
+      print("OCDScreen: Initializing state from passed data.");
+      try {
+        Map<String, dynamic> loadedState = widget.initialState!;
+        if (loadedState.containsKey('severityAndFinalAnswers') &&
+            loadedState['severityAndFinalAnswers'] is List) {
+          List<dynamic> dynamicList = loadedState['severityAndFinalAnswers'];
+          List<int?> loadedAnswers =
+              dynamicList.map((item) => item is int ? item : null).toList();
+          if (loadedAnswers.length == _severityAndFinalAnswers.length) {
+            setState(() {
+              _severityAndFinalAnswers = loadedAnswers;
+            });
+            print("OCDScreen: Initialized severityAndFinalAnswers.");
+          } else {
+            print(
+              "OCDScreen: Initial severityAndFinalAnswers length mismatch. Using defaults.",
+            );
+          }
+        } else {
+          print(
+            "OCDScreen: Initial state missing 'severityAndFinalAnswers' or not a list. Using defaults.",
+          );
+        }
+
+        if (loadedState.containsKey('checklistAnswers') &&
+            loadedState['checklistAnswers'] is Map) {
+          Map<String, dynamic> rawChecklist = Map<String, dynamic>.from(
+            loadedState['checklistAnswers'],
+          );
+          Map<int, Map<String, bool>> loadedChecklist = {};
+          bool dataValid = true;
+          rawChecklist.forEach((key, value) {
+            try {
+              int questionId = int.parse(key);
+              if (value is Map &&
+                  value.containsKey('current') &&
+                  value['current'] is bool &&
+                  value.containsKey('past') &&
+                  value['past'] is bool) {
+                if (_checklistAnswers.containsKey(questionId)) {
+                  loadedChecklist[questionId] = {
+                    'current': value['current'],
+                    'past': value['past'],
+                  };
+                } else {
+                  print(
+                    "OCDScreen: Initial checklist item ID $questionId not found in current questions. Ignoring.",
+                  );
+                }
+              } else {
+                print(
+                  "OCDScreen: Initial checklist item '$key' has invalid format. Ignoring.",
+                );
+                dataValid = false;
+              }
+            } catch (e) {
+              print(
+                "OCDScreen: Error parsing initial checklist key '$key': $e. Ignoring.",
+              );
+              dataValid = false;
+            }
+          });
+
+          if (dataValid && loadedChecklist.isNotEmpty) {
+            setState(() {
+              loadedChecklist.forEach((key, value) {
+                if (_checklistAnswers.containsKey(key)) {
+                  _checklistAnswers[key] = value;
+                }
+              });
+            });
+            print("OCDScreen: Initialized checklistAnswers from saved data.");
+          } else if (!dataValid) {
+            print(
+              "OCDScreen: Some initial checklist data was invalid. Using defaults for those.",
+            );
+          } else {
+            print(
+              "OCDScreen: No valid initial checklist data found for current questions. Using defaults.",
+            );
+          }
+        } else {
+          print(
+            "OCDScreen: Initial state missing 'checklistAnswers' or not a map. Using defaults.",
+          );
+        }
+      } catch (e) {
+        print(
+          "OCDScreen: Error parsing initial state data: $e. Using defaults for all.",
+        );
+        setState(() {
+          _severityAndFinalAnswers = List.filled(14, null);
+          _checklistAnswers = {
+            for (var q in _questions)
+              if (q['type'] == 'checklist')
+                q['id'] as int: {'current': false, 'past': false},
+          };
+        });
+      }
+    } else {
+      print("OCDScreen: No initial state passed. Using defaults.");
     }
-    // Should not happen with valid IDs
-    print("Error: Could not find answer index for Question ID $questionId");
+  }
+
+  Future<void> _saveStateToFirestore() async {
+    if (_userProgressDocRef == null) {
+      print("OCDScreen Error: Cannot save state, user ref is null.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Not logged in?'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _isSaving = true);
+
+    Map<String, Map<String, bool>> checklistForFirestore = _checklistAnswers
+        .map((key, value) => MapEntry(key.toString(), value));
+    final Map<String, dynamic> currentStateForFirestore = {
+      'severityAndFinalAnswers': _severityAndFinalAnswers,
+      'checklistAnswers': checklistForFirestore,
+    };
+    final String fieldPath = '$fieldPartialSaves.$keyOCD';
+
+    try {
+      await _userProgressDocRef!.set({
+        fieldPartialSaves: {keyOCD: currentStateForFirestore},
+      }, SetOptions(mergeFields: [fieldPath]));
+      print("OCDScreen: Partial state saved to Firestore.");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress saved.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, 'saved');
+      }
+    } catch (e) {
+      print("OCDScreen: Error saving state to Firestore: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save progress.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _clearPartialSaveFromFirestore() async {
+    if (_userProgressDocRef == null || !mounted) return;
+    final String fieldPath = '$fieldPartialSaves.$keyOCD';
+    try {
+      await _userProgressDocRef!.update({fieldPath: FieldValue.delete()});
+      print("OCDScreen: Cleared partial save for '$keyOCD' from Firestore.");
+    } catch (e) {
+      print(
+        "OCDScreen: Error clearing partial save for '$keyOCD' from Firestore: $e",
+      );
+    }
+  }
+
+  int _getSeverityAnswerIndex(int questionId) {
+    if (questionId >= 1 && questionId <= 10) return questionId - 1;
+    if (questionId >= 32 && questionId <= 35) return questionId - 32 + 10;
+    print(
+      "Warning: Unexpected question ID $questionId for severity/final answer mapping.",
+    );
     return -1;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('OCD Assessment (Step 3)'), // Added step number
-        backgroundColor: _primaryColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, false), // Pop with false
+    if (_currentUser == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+          backgroundColor: _primaryColor,
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderImage(),
-            const SizedBox(height: 24.0),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _questions.length,
-              itemBuilder: (context, index) {
-                return _buildQuestionBlock(index);
-              },
-              separatorBuilder: (context, index) {
-                // Only add visible dividers between non-checklist groups
-                final currentType = _questions[index]['type'];
-                final nextType =
-                    (index + 1 < _questions.length)
-                        ? _questions[index + 1]['type']
-                        : null;
-                bool hideDivider =
-                    currentType == 'checklist' || nextType == 'checklist';
+        body: const Center(
+          child: Text("User not available. Please log in again."),
+        ),
+      );
+    }
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: Divider(
-                    color: hideDivider ? Colors.transparent : _dividerColor,
-                    thickness: 1.0,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 30.0),
-            _buildNavigateButton(),
-            const SizedBox(height: 12.0),
-            _buildSaveLink(),
-            const SizedBox(height: 20.0),
-          ],
+    final checklistIds =
+        _questions
+            .where((q) => q['type'] == 'checklist')
+            .map((q) => q['id'] as int)
+            .toSet();
+
+    return WillPopScope(
+      onWillPop: () async {
+        print("OCDScreen: Back button pressed.");
+        Navigator.pop(context, null);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('OCD Assessment (Step 3)'),
+          backgroundColor: _primaryColor,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context, null),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderImage(),
+              const SizedBox(height: 24.0),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _questions.length,
+                itemBuilder: (context, index) => _buildQuestionBlock(index),
+                separatorBuilder: (context, index) {
+                  final currentId = _questions[index]['id'] as int;
+                  final nextId =
+                      (index + 1 < _questions.length)
+                          ? _questions[index + 1]['id'] as int
+                          : -1;
+                  bool hideDivider =
+                      checklistIds.contains(currentId) ||
+                      (nextId != -1 && checklistIds.contains(nextId));
+                  double verticalPadding = 16.0;
+                  if (checklistIds.contains(currentId) &&
+                      (nextId != -1 && !checklistIds.contains(nextId))) {
+                    verticalPadding = 24.0;
+                  }
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                    child: Divider(
+                      color: hideDivider ? Colors.transparent : _dividerColor,
+                      thickness: hideDivider ? 0 : 1.0,
+                      height: hideDivider ? 0 : 1.0,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 30.0),
+              _buildNavigateButton(),
+              const SizedBox(height: 12.0),
+              _buildSaveLink(),
+              const SizedBox(height: 20.0),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildHeaderImage() {
-    // (Header image build logic remains the same)
     const String imagePath = 'assets/images/step3pic.png';
     return Center(
       child: Image.asset(
         imagePath,
-        height: 60, // Example height
+        height: 60,
         errorBuilder: (context, error, stackTrace) {
-          print("Error loading image: $error");
+          print("Error loading image '$imagePath': $error");
           return Container(
             height: 60,
-            color: _inactiveColor.withOpacity(0.5),
+            width: 100,
+            color: _inactiveColor.withOpacity(0.3),
             child: const Center(
-              child: Text(
-                'Image Error',
-                style: TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           );
         },
@@ -356,40 +638,36 @@ class _OCDScreenState extends State<OCDScreen> {
     final String type = questionData['type'];
     final String questionText = questionData['question'];
     final int questionId = questionData['id'];
-
-    // Add grouping headers for clarity
     Widget? header;
-    if (questionId == 1) {
+    if (questionId == 1)
       header = _buildSectionHeader("Obsession Severity (Q1-5)");
-    } else if (questionId == 6) {
+    else if (questionId == 6)
       header = _buildSectionHeader("Compulsion Severity (Q6-10)");
-    } else if (questionId == 11) {
-      header = _buildSectionHeader("Symptom Checklist (Q11-21)");
-    } else if (questionId == 22) {
-      header = _buildSectionHeader("Impact & Control (Q22-25)");
-    }
+    else if (questionId == 11)
+      header = _buildSectionHeader("Symptom Checklist (Q11-31)");
+    else if (questionId == 32)
+      header = _buildSectionHeader("Impact & Control (Q32-35)");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (header != null) header, // Display header if applicable
+        if (header != null) header,
         Padding(
-          // Add padding to question text
-          padding: const EdgeInsets.only(top: 8.0),
+          padding: EdgeInsets.only(
+            top: (header == null && type != 'checklist') ? 0 : 8.0,
+          ),
           child: Text(
             questionText,
             style: TextStyle(
-              fontSize:
-                  (type == 'checklist')
-                      ? 16.0
-                      : 17.0, // Slightly smaller for checklist items
-              fontWeight: FontWeight.w600,
+              fontSize: (type == 'checklist') ? 15.5 : 17.0,
+              fontWeight:
+                  (type == 'checklist') ? FontWeight.w500 : FontWeight.w600,
               color: _questionTextColor,
               height: 1.4,
             ),
           ),
         ),
-        const SizedBox(height: 16.0),
+        SizedBox(height: (type == 'checklist') ? 8.0 : 16.0),
         if (type == 'multiple_choice_5')
           _buildMultipleChoiceOptions(questionId, questionData['options'])
         else if (type == 'checklist')
@@ -402,7 +680,7 @@ class _OCDScreenState extends State<OCDScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20.0, bottom: 8.0),
+      padding: const EdgeInsets.only(top: 24.0, bottom: 8.0),
       child: Text(
         title,
         style: TextStyle(
@@ -416,7 +694,10 @@ class _OCDScreenState extends State<OCDScreen> {
 
   Widget _buildMultipleChoiceOptions(int questionId, List<String> options) {
     final answerIndex = _getSeverityAnswerIndex(questionId);
-    if (answerIndex == -1) return const SizedBox.shrink(); // Safety check
+    if (answerIndex < 0 || answerIndex >= _severityAndFinalAnswers.length) {
+      print("Error: Invalid answer index $answerIndex for QID $questionId");
+      return const SizedBox.shrink();
+    }
     return Column(
       children: List.generate(
         options.length,
@@ -430,28 +711,26 @@ class _OCDScreenState extends State<OCDScreen> {
   }
 
   Widget _buildChecklistOptions(int questionId) {
-    // Ensure the key exists before accessing
     if (!_checklistAnswers.containsKey(questionId)) {
-      print("Error: Checklist ID $questionId not found in map.");
+      print("Error rendering checklist: ID $questionId not found in map.");
       return const SizedBox.shrink();
     }
-    bool isCurrent = _checklistAnswers[questionId]!['current']!;
-    bool isPast = _checklistAnswers[questionId]!['past']!;
-
+    bool isCurrent = _checklistAnswers[questionId]!['current'] ?? false;
+    bool isPast = _checklistAnswers[questionId]!['past'] ?? false;
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 10.0,
-      ), // Indent checklist options slightly
+      padding: const EdgeInsets.only(left: 10.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           _buildChecklistItem('Current', isCurrent, (value) {
+            if (!mounted) return;
             setState(() {
               _checklistAnswers[questionId]!['current'] = value ?? false;
             });
           }),
           const SizedBox(width: 40),
           _buildChecklistItem('Past', isPast, (value) {
+            if (!mounted) return;
             setState(() {
               _checklistAnswers[questionId]!['past'] = value ?? false;
             });
@@ -466,24 +745,22 @@ class _OCDScreenState extends State<OCDScreen> {
     bool isChecked,
     ValueChanged<bool?> onChanged,
   ) {
-    // (Checklist item build logic remains the same)
     return InkWell(
       onTap: () => onChanged(!isChecked),
       borderRadius: BorderRadius.circular(4),
       child: Padding(
-        // Add padding for better tap area
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 24, // Slightly larger tap target
+              width: 24,
               height: 24,
               child: Checkbox(
                 value: isChecked,
                 onChanged: onChanged,
                 activeColor: _primaryColor,
-                side: BorderSide(color: _inactiveColor, width: 2),
+                side: BorderSide(color: _inactiveColor, width: 1.5),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
@@ -498,23 +775,29 @@ class _OCDScreenState extends State<OCDScreen> {
     );
   }
 
+  // Builds horizontal Yes/No radio options
   Widget _buildYesNoOptions(int questionId, List<String> options) {
     final answerIndex = _getSeverityAnswerIndex(questionId);
-    if (answerIndex == -1) return const SizedBox.shrink(); // Safety check
+    // Check if the mapping returned a valid index
+    if (answerIndex < 0 || answerIndex >= _severityAndFinalAnswers.length) {
+      print("Error: Invalid answer index $answerIndex for QID $questionId");
+      return const SizedBox.shrink(); // Don't render if index is invalid
+    }
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start, // Align options to the left
       children: List.generate(options.length, (optionIndex) {
+        // Yes = 0, No = 1. Check if current answer matches this option's value.
         final bool isSelected =
             _severityAndFinalAnswers[answerIndex] == optionIndex;
         return Padding(
-          padding: EdgeInsets.only(
-            right: optionIndex == 0 ? 30.0 : 0, // Space between Yes and No
-            left: 0, // Start from left edge
-          ),
+          // Add space only between Yes and No
+          padding: EdgeInsets.only(right: optionIndex == 0 ? 30.0 : 0),
           child: InkWell(
             onTap: () {
+              if (!mounted) return;
               setState(() {
+                // Update the list at the calculated index
                 _severityAndFinalAnswers[answerIndex] = optionIndex;
               });
             },
@@ -522,6 +805,7 @@ class _OCDScreenState extends State<OCDScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Custom radio button
                 Container(
                   width: 22.0,
                   height: 22.0,
@@ -533,6 +817,7 @@ class _OCDScreenState extends State<OCDScreen> {
                       width: 2.0,
                     ),
                   ),
+                  // --- THIS IS THE CORRECTED PART ---
                   child:
                       isSelected
                           ? Center(
@@ -546,7 +831,9 @@ class _OCDScreenState extends State<OCDScreen> {
                             ),
                           )
                           : null,
+                  // --- THE DUPLICATE CHILD BLOCK HAS BEEN REMOVED ---
                 ),
+                // Option Text (Yes/No)
                 Text(
                   options[optionIndex],
                   style: TextStyle(fontSize: 15.0, color: _optionTextColor),
@@ -564,10 +851,8 @@ class _OCDScreenState extends State<OCDScreen> {
     required int optionValue,
     required int questionIndexForAnswer,
   }) {
-    // (Vertical option build logic remains the same)
     if (questionIndexForAnswer < 0 ||
         questionIndexForAnswer >= _severityAndFinalAnswers.length) {
-      print("Error: Invalid questionIndexForAnswer: $questionIndexForAnswer");
       return const SizedBox.shrink();
     }
     final bool isSelected =
@@ -576,6 +861,7 @@ class _OCDScreenState extends State<OCDScreen> {
       padding: const EdgeInsets.only(bottom: 10.0),
       child: InkWell(
         onTap: () {
+          if (!mounted) return;
           setState(() {
             if (questionIndexForAnswer >= 0 &&
                 questionIndexForAnswer < _severityAndFinalAnswers.length) {
@@ -627,38 +913,38 @@ class _OCDScreenState extends State<OCDScreen> {
   Widget _buildNavigateButton() {
     return Center(
       child: ElevatedButton(
-        // ***MODIFIED onPressed***
-        onPressed: () {
-          // 1. Validate: Check if Q1-10 and Q22-25 are answered
+        onPressed: () async {
+          if (!mounted) return;
           bool severityAnswered =
               !_severityAndFinalAnswers.sublist(0, 10).contains(null);
           bool finalAnswered =
-              !_severityAndFinalAnswers
-                  .sublist(10, 14)
-                  .contains(null); // Q22-25 -> indices 10-13
-
+              !_severityAndFinalAnswers.sublist(10, 14).contains(null);
           if (!severityAnswered || !finalAnswered) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Please answer all questions in sections Q1-10 and Q22-25.',
+                  'Please answer all questions in sections Q1-10 and Q32-35.',
                 ),
                 backgroundColor: Colors.orangeAccent,
                 duration: Duration(seconds: 3),
               ),
             );
-            return; // Stop if not valid
+            return;
           }
-
-          // 2. If valid, prepare results map and pop
+          await _clearPartialSaveFromFirestore();
+          final Map<String, Map<String, bool>> checklistForResults =
+              _checklistAnswers.map(
+                (key, value) => MapEntry(key.toString(), value),
+              );
           final results = {
-            'severityAndFinalAnswers': _severityAndFinalAnswers,
-            'checklistAnswers': _checklistAnswers,
+            'severityAndFinalAnswers': List<int?>.from(
+              _severityAndFinalAnswers,
+            ),
+            'checklistAnswers': checklistForResults,
           };
           print('Step 3 (OCD) Answers: $results');
-          Navigator.pop(context, results); // Return the map of answers
+          Navigator.pop(context, results);
         },
-        // *** END MODIFIED onPressed***
         style: ElevatedButton.styleFrom(
           backgroundColor: _primaryColor,
           foregroundColor: Colors.white,
@@ -675,27 +961,31 @@ class _OCDScreenState extends State<OCDScreen> {
   }
 
   Widget _buildSaveLink() {
-    // (Save link logic remains the same)
     return Center(
       child: InkWell(
-        onTap: () {
-          print('Save and continue later tapped');
-          // TODO: Implement save functionality if needed
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Save functionality not implemented yet.'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
-        child: Text(
-          'Save and continue later >>',
-          style: TextStyle(
-            fontSize: 14,
-            color: _primaryColor,
-            decoration: TextDecoration.underline,
-            decorationColor: _primaryColor,
-          ),
+        onTap: _isSaving ? null : _saveStateToFirestore,
+        borderRadius: BorderRadius.circular(8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child:
+              _isSaving
+                  ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.0,
+                      color: _primaryColor, // Corrected
+                    ),
+                  )
+                  : Text(
+                    'Save and continue later >>',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _primaryColor,
+                      decoration: TextDecoration.underline,
+                      decorationColor: _primaryColor,
+                    ),
+                  ),
         ),
       ),
     );

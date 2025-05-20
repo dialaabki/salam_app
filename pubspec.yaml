@@ -30,46 +30,43 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   flutter_localizations:
     sdk: flutter
-    
+
   intl: ^0.19.0
   image_picker: ^1.0.4
-  file_picker: ^5.3.3
-  video_player: ^2.8.2
-  chewie: ^1.8.1
-  uuid: ^4.3.3 # Use the latest version
+  file_picker: ^5.3.3 # Consider updating to ^6.0.0 or higher if no conflicts
+  video_player: ^2.8.6 # Check for latest stable
+  chewie: ^1.7.5       # Check for latest stable
+  uuid: ^3.0.7 # This was set to resolve previous conflicts with dart_code_metrics
   collection: ^1.18.0
-  video_player_web: ^2.0.15
-  firebase_core: ^3.13.0  # Example: Use the latest CORE version compatible with others
-  firebase_auth: ^5.5.2  # Example: Use the latest AUTH version
-  cloud_firestore: ^5.6.6 # Example: Use the latest FIRESTORE version
-
+  video_player_web: ^2.0.15 # Check for latest
+  firebase_core: ^3.1.0 # Updated to a more recent common version, check your firebase_options
+  firebase_auth: ^5.0.0 # Updated to a more recent common version
+  cloud_firestore: ^5.0.0 # Updated to a more recent common version
+  youtube_player_flutter: ^8.1.2 # Check for latest stable
   google_fonts: ^6.2.1
-  audioplayers: ^6.4.0 # Changed to caret syntax for flexibility
-  cupertino_icons: ^1.0.8
+  qr_flutter: ^4.1.0
+  http: ^1.2.0
+  url_launcher: ^6.2.6
+  audioplayers: ^6.0.0 # Updated to a more recent common version
+  cupertino_icons: ^1.0.8 # Usually fine, or ^1.0.6
   iconsax: ^0.0.8
-  flutter_riverpod: ^2.6.1
-  dotted_line: ^3.2.3
-  cached_network_image: ^3.4.1
+  flutter_riverpod: ^2.5.1 # Updated to a more recent common version
+  dotted_line: ^3.2.2 # Updated to a more recent common version
+  cached_network_image: ^3.3.1 # Updated to a more recent common version
   mask_text_input_formatter: ^2.9.0
+  shared_preferences: ^2.2.3 # Updated to a more recent common version
+  provider: ^6.0.0 # Fine, or check latest ^6.1.2
 
-  shared_preferences: ^2.5.2
-  provider: ^6.0.0
-
-
+  # REMOVE dart_code_metrics from here if it was accidentally placed
+  # dart_code_metrics: ^6.0.0 # <-- This line was causing the "doesn't match any versions" error
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^3.0.0
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
