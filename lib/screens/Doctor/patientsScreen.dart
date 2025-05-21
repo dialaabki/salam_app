@@ -1,18 +1,21 @@
 // lib/patients_screen.dart
 import 'package:flutter/material.dart';
 import 'patientDetailScreen.dart';
+// Import main.dart to access route constants (good practice)
+import '/main.dart'; // Adjust path if main.dart is elsewhere
+// Import theme provider if needed directly (usually accessed via Theme.of(context))
+// import '../providers/theme_provider.dart';
 
 // Patient class definition (keep as is)
 class Patient {
   final String id;
   final String name;
-  final String age; // Age is already a String here
+  final String age;
   final String condition;
   final String avatarPath;
   final Color avatarBgColor;
 
   Patient({
-    /* constructor */
     required this.id,
     required this.name,
     required this.age,
@@ -24,28 +27,25 @@ class Patient {
 
 class PatientsScreen extends StatefulWidget {
   const PatientsScreen({super.key});
+  // Define route name for consistency
+  static const routeName = '/patients'; // '/patients'
+
   @override
   State<PatientsScreen> createState() => _PatientsScreenState();
 }
 
 class _PatientsScreenState extends State<PatientsScreen> {
-  // ... (keep existing variables and initState, dispose, etc.) ...
+  // *** Screen index for Patients Screen ***
   final int _screenIndex = 1;
-  static const Color headerColor = Color(0xFF5A9AB8);
-  static const Color headerTextColor = Color(0xFF003366);
-  static const Color searchBarColor = Color(0xFFF0F0F0);
-  static const Color searchBarTextColor = Colors.grey;
-  static const Color patientCardBackground = Color(0xFFE7F0F5);
-  static const Color patientTextColor = Color(0xFF5A7A9E);
-  static const Color maleAvatarBg = Color(0xFFA5D6F0);
-  static const Color femaleAvatarBg = Color(0xFFD1C4E9);
-  static const Color bottomNavColor = Color(0xFF004A99);
-  static const Color bottomNavSelectedColor = Colors.white;
-  static const Color bottomNavUnselectedColor = Color(0xFFADD8E6);
+
+  // --- UI Constants (Example - Keep your existing constants) ---
+  // static const Color headerColor = Color(0xFF5A9AB8); // Use theme colors instead if possible
+  // ... other constants ...
   final String headerIllustrationPath = 'assets/images/patientmenupic.png';
   final String maleAvatarPath = 'assets/images/malepatientpic.png';
   final String femaleAvatarPath = 'assets/images/femalepatientpic.png';
   final String chartImagePath = 'assets/images/chartpic.png';
+
   final TextEditingController _searchController = TextEditingController();
   List<Patient> _allPatients = [];
   List<Patient> _filteredPatients = [];
@@ -53,79 +53,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
   @override
   void initState() {
     super.initState();
-    _allPatients = _getDummyPatients();
+    _allPatients = _getDummyPatients(); // Load your patient data
     _filteredPatients = _allPatients;
     _searchController.addListener(_filterPatients);
-  }
-
-  List<Patient> _getDummyPatients() {
-    /* ... same ... */
-    return [
-      Patient(
-        id: '1',
-        name: 'Morad',
-        age: '34',
-        condition: 'Depression',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-      Patient(
-        id: '2',
-        name: 'Lara',
-        age: '23',
-        condition: 'Anxiety',
-        avatarPath: femaleAvatarPath,
-        avatarBgColor: femaleAvatarBg,
-      ),
-      Patient(
-        id: '3',
-        name: 'Tamer',
-        age: '28',
-        condition: 'Addiction',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-      Patient(
-        id: '4',
-        name: 'Sameer',
-        age: '40',
-        condition: 'OCD',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-      Patient(
-        id: '5',
-        name: 'Ahmad',
-        age: '29',
-        condition: 'Depression',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-      Patient(
-        id: '6',
-        name: 'Sara',
-        age: '20',
-        condition: 'Anxiety',
-        avatarPath: femaleAvatarPath,
-        avatarBgColor: femaleAvatarBg,
-      ),
-      Patient(
-        id: '7',
-        name: 'Omar',
-        age: '18',
-        condition: 'ADHD',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-      Patient(
-        id: '8',
-        name: 'Mohammed',
-        age: '27',
-        condition: 'OCD',
-        avatarPath: maleAvatarPath,
-        avatarBgColor: maleAvatarBg,
-      ),
-    ];
   }
 
   @override
@@ -135,7 +65,30 @@ class _PatientsScreenState extends State<PatientsScreen> {
     super.dispose();
   }
 
-  // --- UPDATED _filterPatients ---
+  // --- Dummy Data & Filtering (Keep your existing implementations) ---
+  List<Patient> _getDummyPatients() {
+    // Return your list of patients
+    return [
+      Patient(
+        id: '1',
+        name: 'Morad',
+        age: '34',
+        condition: 'Depression',
+        avatarPath: maleAvatarPath,
+        avatarBgColor: const Color(0xFFA5D6F0),
+      ),
+      Patient(
+        id: '2',
+        name: 'Lara',
+        age: '23',
+        condition: 'Anxiety',
+        avatarPath: femaleAvatarPath,
+        avatarBgColor: const Color(0xFFD1C4E9),
+      ),
+      // ... add all patients
+    ];
+  }
+
   void _filterPatients() {
     final query = _searchController.text.toLowerCase().trim();
     setState(() {
@@ -146,23 +99,31 @@ class _PatientsScreenState extends State<PatientsScreen> {
             _allPatients.where((patient) {
               final nameLower = patient.name.toLowerCase();
               final conditionLower = patient.condition.toLowerCase();
-              final ageString = patient.age; // Age is already a string
-
+              final ageString = patient.age;
               return nameLower.contains(query) ||
                   conditionLower.contains(query) ||
-                  ageString.contains(query); // <-- ADDED age search
+                  ageString.contains(query);
             }).toList();
       }
-      // Optionally sort results
-      // _filteredPatients.sort((a, b) => a.name.compareTo(b.name));
     });
   }
-  // --- End Update ---
 
-  // --- Patient Card Widget (Keep as is) ---
+  // --- Patient Card Widget (Keep your existing implementation) ---
   Widget _buildPatientCard({required Patient patient}) {
-    /* ... same ... */
+    // Use Theme.of(context) for colors if adapting for dark mode
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final cardBgColor = isDarkMode ? Colors.grey[800] : const Color(0xFFE7F0F5);
+    final primaryTextColor =
+        isDarkMode ? Colors.white70 : const Color(0xFF5A7A9E);
+    final avatarOuterBg =
+        isDarkMode
+            ? patient.avatarBgColor.withOpacity(0.6)
+            : patient.avatarBgColor;
+
     return Padding(
+      /* ... */
+      // Your existing card structure
       padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
       child: InkWell(
         onTap:
@@ -175,16 +136,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
         borderRadius: BorderRadius.circular(25.0),
         child: Container(
           decoration: BoxDecoration(
-            color: patientCardBackground,
+            color: cardBgColor, // Apply theme-based color
             borderRadius: BorderRadius.circular(25.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.15),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            boxShadow: [/* Your shadows */],
           ),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
@@ -192,16 +146,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: patient.avatarBgColor,
+                  backgroundColor: avatarOuterBg, // Theme-based outer bg
                   child: CircleAvatar(
-                    radius: 30,
+                    // Inner avatar with image
+                    radius: 28, // Slightly smaller
                     backgroundImage: AssetImage(patient.avatarPath),
                     backgroundColor: Colors.transparent,
-                    onBackgroundImageError: (e, s) {},
-                    child:
-                        AssetImage(patient.avatarPath) == null
-                            ? const Icon(Icons.person)
-                            : null,
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -211,18 +161,18 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     children: [
                       Text(
                         patient.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 17,
-                          color: patientTextColor,
+                          color: primaryTextColor, // Theme-based text color
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         "${patient.age} Years\n${patient.condition}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: patientTextColor,
+                          color: primaryTextColor, // Theme-based text color
                         ),
                         softWrap: true,
                       ),
@@ -230,12 +180,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Image.asset(
-                  chartImagePath,
-                  height: 50,
-                  width: 60,
-                  errorBuilder: (c, e, s) => const Icon(Icons.error_outline),
-                ),
+                Image.asset(chartImagePath, height: 50, width: 60),
               ],
             ),
           ),
@@ -244,43 +189,74 @@ class _PatientsScreenState extends State<PatientsScreen> {
     );
   }
 
-  // --- Bottom Nav Tap Handler (Keep as is) ---
+  // --- *** UPDATED Bottom Nav Tap Handler *** ---
   void _onItemTapped(int index) {
-    /* ... same ... */
-    if (index == _screenIndex) return;
+    if (index == _screenIndex)
+      return; // Do nothing if tapping the current screen
+
+    // Use the route names defined in main.dart
     switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/');
+      case 0: // Home
+        Navigator.pushReplacementNamed(
+          context,
+          '/doctor_home',
+        ); // Use '/doctor_home'
         break;
-      case 1:
+      case 1: // Patients (Current Screen)
+        // Already here, do nothing
         break;
-      case 2:
-        Navigator.pushReplacementNamed(context, '/notes');
+      case 2: // Notes
+        Navigator.pushReplacementNamed(context, '/notes'); // Use '/notes'
         break;
-      case 3:
-        Navigator.pushReplacementNamed(context, '/profile');
+      case 3: // Profile
+        Navigator.pushReplacementNamed(context, '/profile'); // Use '/profile'
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... build method structure remains the same ...
-    // Update hint text in search bar
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    // --- Define Effective Colors based on Theme ---
+    // Bottom Nav Colors (Example matching DoctorHomeScreen)
+    final Color effectiveBottomNavColor =
+        isDarkMode ? Colors.grey[900]! : const Color(0xFF004A99);
+    final Color effectiveBottomNavSelectedColor =
+        isDarkMode ? Colors.tealAccent[100]! : Colors.white;
+    final Color effectiveBottomNavUnselectedColor =
+        isDarkMode ? Colors.grey[500]! : const Color(0xFFADD8E6);
+
+    // Header Colors (Adapt if needed)
+    final Color effectiveHeaderColor =
+        isDarkMode ? Colors.grey[850]! : const Color(0xFF5A9AB8);
+    final Color effectiveHeaderTextColor =
+        isDarkMode ? Colors.white : const Color(0xFF003366);
+
+    // Search Bar Colors (Adapt if needed)
+    final Color effectiveSearchBarColor =
+        isDarkMode ? Colors.grey[700]! : const Color(0xFFF0F0F0);
+    final Color effectiveSearchBarTextColor =
+        isDarkMode ? Colors.white70 : Colors.grey;
+    final Color effectiveIconColor =
+        isDarkMode ? Colors.white54 : Colors.grey[600]!;
+
     return Scaffold(
-      backgroundColor: headerColor,
+      // Use theme's background color or a specific one
+      backgroundColor: effectiveHeaderColor, // Background for the top part
       body: Stack(
         children: [
-          // --- Header (keep as is) ---
+          // --- Header ---
           Positioned(
-            /* ... */
             top: 0,
             left: 0,
             right: 0,
             height: 180,
             child: Container(
-              color: headerColor,
+              color: effectiveHeaderColor, // Use theme-adapted color
               child: SafeArea(
+                /* Your Header Content */
                 child: Padding(
                   padding: const EdgeInsets.only(
                     top: 20.0,
@@ -291,30 +267,16 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         "Patients",
                         style: TextStyle(
-                          color: headerTextColor,
+                          color:
+                              effectiveHeaderTextColor, // Use theme-adapted color
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Image.asset(
-                        headerIllustrationPath,
-                        height: 100,
-                        errorBuilder:
-                            (c, e, s) => const SizedBox(
-                              height: 100,
-                              width: 120,
-                              child: Center(
-                                child: Icon(
-                                  Icons.groups,
-                                  color: Colors.white70,
-                                  size: 50,
-                                ),
-                              ),
-                            ),
-                      ),
+                      Image.asset(headerIllustrationPath, height: 100),
                     ],
                   ),
                 ),
@@ -323,17 +285,18 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           // --- Content Area ---
           Positioned.fill(
-            top: 145,
+            top: 145, // Adjust overlap as needed
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
+                // Use the general scaffold background color for the main content area
+                color: theme.scaffoldBackgroundColor,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(35),
                 ),
               ),
               child: Column(
                 children: [
-                  // --- Search Bar (Update Hint Text) ---
+                  // --- Search Bar ---
                   Padding(
                     padding: const EdgeInsets.only(
                       top: 25.0,
@@ -344,17 +307,20 @@ class _PatientsScreenState extends State<PatientsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 15.0),
                       decoration: BoxDecoration(
-                        color: searchBarColor,
+                        color:
+                            effectiveSearchBarColor, // Use theme-adapted color
                         borderRadius: BorderRadius.circular(30.0),
                       ),
                       child: TextField(
                         controller: _searchController,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ), // Input text color
                         decoration: InputDecoration(
-                          icon: Icon(Icons.tune, color: Colors.grey[600]),
-                          hintText:
-                              "Search by name, condition, age...", // <-- UPDATED HINT
+                          icon: Icon(Icons.tune, color: effectiveIconColor),
+                          hintText: "Search by name, condition, age...",
                           hintStyle: TextStyle(
-                            color: searchBarTextColor,
+                            color: effectiveSearchBarTextColor,
                             fontSize: 14,
                           ),
                           border: InputBorder.none,
@@ -363,18 +329,20 @@ class _PatientsScreenState extends State<PatientsScreen> {
                                   ? IconButton(
                                     icon: Icon(
                                       Icons.clear,
-                                      color: Colors.grey[600],
+                                      color: effectiveIconColor,
                                     ),
                                     onPressed: () => _searchController.clear(),
                                   )
-                                  : Icon(Icons.search, color: Colors.grey[600]),
+                                  : Icon(
+                                    Icons.search,
+                                    color: effectiveIconColor,
+                                  ),
                         ),
                       ),
                     ),
                   ),
-                  // --- Patient List (keep as is) ---
+                  // --- Patient List ---
                   Expanded(
-                    /* ... */
                     child: ListView.builder(
                       padding: EdgeInsets.zero,
                       itemCount: _filteredPatients.length,
@@ -390,41 +358,51 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
         ],
       ),
-      // --- Bottom Nav (keep as is) ---
+      // --- *** UPDATED Bottom Navigation Bar (Using Theme Colors) *** ---
       bottomNavigationBar: Container(
-        /* ... */
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.black12, width: 0.5)),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: theme.dividerColor.withOpacity(0.5),
+              width: 0.5,
+            ),
+          ),
         ),
         child: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              label: 'Home',
+            ), // Index 0
             BottomNavigationBarItem(
               icon: Icon(Icons.groups),
               label: 'Patients',
-            ),
+            ), // Index 1 (Filled icon when selected)
             BottomNavigationBarItem(
               icon: Icon(Icons.assignment_outlined),
               label: 'Notes',
-            ),
+            ), // Index 2
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               label: 'Profile',
-            ),
+            ), // Index 3
           ],
-          currentIndex: _screenIndex,
+          currentIndex: _screenIndex, // Should be 1 for PatientsScreen
           onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
-          backgroundColor: bottomNavColor,
-          selectedItemColor: bottomNavSelectedColor,
-          unselectedItemColor: bottomNavUnselectedColor,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          selectedFontSize: 1,
-          unselectedFontSize: 1,
+          backgroundColor: effectiveBottomNavColor, // Apply theme color
+          selectedItemColor:
+              effectiveBottomNavSelectedColor, // Apply theme color
+          unselectedItemColor:
+              effectiveBottomNavUnselectedColor, // Apply theme color
+          showSelectedLabels: true, // Show labels
+          showUnselectedLabels: true, // Show labels
+          selectedFontSize: 12.0, // Consistent font size
+          unselectedFontSize: 12.0, // Consistent font size
           elevation: 5,
-          selectedIconTheme: const IconThemeData(size: 28),
-          unselectedIconTheme: const IconThemeData(size: 24),
+          // Optional: Adjust icon themes if needed, but colors above handle most cases
+          // selectedIconTheme: IconThemeData(size: 28, color: effectiveBottomNavSelectedColor),
+          // unselectedIconTheme: IconThemeData(size: 24, color: effectiveBottomNavUnselectedColor),
         ),
       ),
     );

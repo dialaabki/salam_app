@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 // Import the screens this drawer navigates to
 import 'notificationsScreen.dart';
 import 'notesScreen.dart';
-import 'settingsScreen.dart';
+import 'package:salam_app/screens/Doctor/SettingsScreen.dart';
 import 'profileScreen.dart';
 import 'patientsScreen.dart'; // <-- ***** 1. ADD THIS IMPORT *****
 

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
-import 'appDrawer.dart'; // <-- Import the drawer (Assuming this exists)
-import 'patientsScreen.dart'; // <-- Import to access Patient class
+import 'appDrawer.dart'; // <-- Import the drawer
+import 'patientsScreen.dart'; // <-- Import PatientsScreen to access Patient class and potentially the screen itself
 import 'patientDetailScreen.dart'; // <-- Import detail screen
+import 'NotesScreen.dart'; // <-- *** ADDED: Import Notes Screen ***
+import 'ProfileScreen.dart'; // <-- *** ADDED: Import Profile Screen ***
 
 class DoctorHomeScreen extends StatefulWidget {
   const DoctorHomeScreen({super.key});
+
+  // Define the route name for this screen for consistency (optional but good practice)
+  static const routeName = '/home'; // Or '/' if it's the initial route
 
   @override
   State<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
 }
 
 class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
-  final int _screenIndex = 0; // This is the Home screen
+  // This index should reflect the index of THIS screen in the bottom nav bar
+  final int _screenIndex = 0; // 0 for Home
 
   final String doctorImagePath = 'assets/images/doctorpic.png';
   final String malePatientImagePath = 'assets/images/malepatientpic.png';
@@ -161,19 +167,37 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     );
   }
 
+  // --- Navigation Logic ---
   void _onItemTapped(int index) {
+    // If the tapped index is the same as the current screen's index, do nothing
     if (index == _screenIndex) return;
+
+    // Navigate based on the tapped index
     switch (index) {
       case 0:
-        break;
+        // Already on Home screen, pushReplacementNamed would still work but is redundant
+        // Navigator.pushReplacementNamed(context, DoctorHomeScreen.routeName); // or '/home'
+        break; // Do nothing as we are already here
       case 1:
-        Navigator.pushReplacementNamed(context, '/patients');
+        // Navigate to Patients Screen using its defined named route
+        Navigator.pushReplacementNamed(
+          context,
+          '/patients',
+        ); // Assumes '/patients' is defined in MaterialApp
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, '/notes');
+        // Navigate to Notes Screen using its defined named route
+        Navigator.pushReplacementNamed(
+          context,
+          '/notes',
+        ); // Assumes '/notes' is defined in MaterialApp
         break;
       case 3:
-        Navigator.pushReplacementNamed(context, '/profile');
+        // Navigate to Profile Screen using its defined named route
+        Navigator.pushReplacementNamed(
+          context,
+          '/profile',
+        ); // Assumes '/profile' is defined in MaterialApp
         break;
     }
   }
@@ -187,8 +211,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     const Color lightPrimaryTextColor = Color(0xFF003366);
     const Color lightSecondaryTextColor = Color(0xFF5A7A9E);
     const Color lightAppBarBg = Colors.white;
-    const Color lightScaffoldBg =
-        Colors.white; // Default scaffold is usually white
+    const Color lightScaffoldBg = Colors.white;
     const Color lightBottomNavColor = Color(0xFF004A99);
     const Color lightBottomNavSelectedColor = Colors.white;
     const Color lightBottomNavUnselectedColor = Color(0xFFADD8E6);
@@ -201,12 +224,10 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
     final Color darkPrimaryTextColor = Colors.white.withOpacity(0.87);
     final Color darkSecondaryTextColor = Colors.white.withOpacity(0.60);
     final Color darkAppBarBg = Colors.grey[900]!;
-    final Color darkScaffoldBg = const Color(0xFF121212); // Common dark bg
+    final Color darkScaffoldBg = const Color(0xFF121212);
     final Color darkBottomNavColor = Colors.grey[900]!;
-    final Color darkBottomNavSelectedColor =
-        Colors.tealAccent[100]!; // Brighter selected color
+    final Color darkBottomNavSelectedColor = Colors.tealAccent[100]!;
     final Color darkBottomNavUnselectedColor = Colors.grey[500]!;
-    // Card colors are handled inside _buildPatientCard
 
     // --- Choose Colors Based on Theme ---
     final Color effectivePrimaryTextColor =
@@ -229,17 +250,14 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor:
-          effectiveScaffoldBg, // Apply theme-based scaffold background
+      backgroundColor: effectiveScaffoldBg,
       appBar: AppBar(
-        backgroundColor:
-            effectiveAppBarBg, // Apply theme-based AppBar background
+        backgroundColor: effectiveAppBarBg,
         elevation: 0,
         title: Text(
-          'Hello Dr.Name 👋',
+          'Hello Dr.Name 👋', // Replace with actual doctor name if available
           style: TextStyle(
-            color:
-                effectiveSecondaryTextColor, // Use theme-based secondary text color
+            color: effectiveSecondaryTextColor,
             fontSize: 16,
             fontWeight: FontWeight.normal,
           ),
@@ -247,11 +265,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.menu,
-              color: effectivePrimaryTextColor,
-              size: 30,
-            ), // Use theme-based primary text color
+            icon: Icon(Icons.menu, color: effectivePrimaryTextColor, size: 30),
             onPressed: () {
               scaffoldKey.currentState?.openEndDrawer();
             },
@@ -261,8 +275,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         automaticallyImplyLeading: false,
       ),
 
-      endDrawer:
-          const AppDrawer(), // Assuming AppDrawer adapts or you style it separately
+      endDrawer: const AppDrawer(),
 
       body: SingleChildScrollView(
         child: Column(
@@ -275,8 +288,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color:
-                      effectivePrimaryTextColor, // Use theme-based primary text color
+                  color: effectivePrimaryTextColor,
                 ),
               ),
             ),
@@ -284,7 +296,6 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              // Consider having a dark-theme version of the image if needed
               child: Image.asset(doctorImagePath),
             ),
             const SizedBox(height: 20),
@@ -296,8 +307,7 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color:
-                      effectivePrimaryTextColor, // Use theme-based primary text color
+                  color: effectivePrimaryTextColor,
                 ),
               ),
             ),
@@ -306,31 +316,30 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
             Column(
               children:
                   _recentPatients.map((patient) {
-                    bool isBlue = _recentPatients.indexOf(patient) % 2 == 0;
+                    // Determine color based on index for alternating style
+                    bool isBlueTheme =
+                        _recentPatients.indexOf(patient) % 2 == 0;
                     return _buildPatientCard(
                       patient: patient,
-                      // Pass LIGHT theme colors, the function will handle dark mode
+                      // Pass light theme colors; the function handles dark mode logic
                       lightBackgroundColor:
-                          isBlue ? lightBlueCardBg : lightPurpleCardBg,
+                          isBlueTheme ? lightBlueCardBg : lightPurpleCardBg,
                       lightAvatarBackgroundColor:
-                          isBlue ? lightBlueAvatarBg : lightPurpleAvatarBg,
+                          isBlueTheme ? lightBlueAvatarBg : lightPurpleAvatarBg,
                     );
                   }).toList(),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 20), // Add some padding at the bottom
           ],
         ),
       ),
 
-      // --- Bottom Navigation Bar (Updated for Labels and Dark Theme) ---
+      // --- Bottom Navigation Bar (Uses _onItemTapped for navigation) ---
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color:
-                  isDarkMode
-                      ? Colors.grey[700]!
-                      : Colors.black12, // Theme-based border
+              color: isDarkMode ? Colors.grey[700]! : Colors.black12,
               width: 0.5,
             ),
           ),
@@ -339,34 +348,31 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
-              label: 'Home', // Keep label text
+              label: 'Home', // Index 0
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.groups_outlined),
-              label: 'Patients', // Keep label text
+              label: 'Patients', // Index 1
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.assignment_outlined),
-              label: 'Notes', // Keep label text
+              label: 'Notes', // Index 2
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
-              label: 'Profile', // Keep label text
+              label: 'Profile', // Index 3
             ),
           ],
-          currentIndex: _screenIndex,
-          onTap: _onItemTapped,
+          currentIndex: _screenIndex, // Highlights the 'Home' icon
+          onTap: _onItemTapped, // Calls the navigation function
           type: BottomNavigationBarType.fixed,
-          backgroundColor:
-              effectiveBottomNavColor, // Apply theme-based background
-          selectedItemColor:
-              effectiveBottomNavSelectedColor, // Apply theme-based selected color
-          unselectedItemColor:
-              effectiveBottomNavUnselectedColor, // Apply theme-based unselected color
-          showSelectedLabels: true, // **** CHANGED: Show labels ****
-          showUnselectedLabels: true, // **** CHANGED: Show labels ****
-          selectedFontSize: 12.0, // **** CHANGED: Set readable font size ****
-          unselectedFontSize: 12.0, // **** CHANGED: Set readable font size ****
+          backgroundColor: effectiveBottomNavColor,
+          selectedItemColor: effectiveBottomNavSelectedColor,
+          unselectedItemColor: effectiveBottomNavUnselectedColor,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          selectedFontSize: 12.0,
+          unselectedFontSize: 12.0,
           elevation: 5,
         ),
       ),

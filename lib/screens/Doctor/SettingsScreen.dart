@@ -1,18 +1,14 @@
-// lib/settings_screen.dart (Assuming this is for the Doctor)
+// lib/screens/Doctor/SettingsScreen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart'; // << Import url_launcher
 
-// --- Ensure these paths are correct for your project structure ---
-// Import main.dart for route constants like MyApp.loginRoute and MyApp.doctorHomeRoute
 import '../../main.dart';
-// Import your ThemeNotifier provider
-import '../../providers/theme_provider.dart'; // Adjust path if needed
-// Import login screen directly only if NOT using named routes for navigation
-// import '../auth/loginScreen.dart';
-// Import edit screens if/when you create them
-// import 'edit_setting_screen.dart';
+import '../../providers/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,146 +18,270 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // --- Screen Index for THIS screen's Bottom Nav ---
-  // Index 3 corresponds to the Settings/Profile icon in the custom bar below
+  // ... (all other state variables and methods remain the same as before)
   final int _screenIndex = 3;
-
-  // State variables for settings toggles/values
   bool _weeklyReportsEnabled = false;
-  bool _newPatientsEnabled = true; // Example initial value
-  late bool _darkModeEnabled; // Initialized in initState
+  bool _newPatientsEnabled = true;
+  late bool _darkModeEnabled;
   String _selectedLanguage = 'English';
   final List<String> _languages = ['English', 'Arabic'];
+  String _currentDoctorName = "Loading...";
+  String _currentGender = "Loading...";
+  String _currentBirthDate = "Loading...";
+  String _currentEmail = "Loading...";
+  bool _isLoadingProfile = true;
+  String? _profileErrorMessage;
+  bool _isSendingPasswordReset = false;
 
-  // Example State for display placeholders (replace with actual data loading)
-  String _currentDoctorName = "Dr. Evelyn Reed"; // TODO: Load actual data
-  String _currentGender = "Female"; // TODO: Load actual data
-  String _currentBirthDate = "11/07/1980"; // TODO: Load actual data
-  String _currentEmail = "e.reed.clinic@mail.com"; // TODO: Load actual data
-  // bool _twoFactorEnabled = false; // Example state for 2FA if needed
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Color constants (Consider moving to a dedicated theme/constants file)
-  static const Color headerColor = Color(0xFF5A9AB8); // Example header color
-  static const Color itemBackgroundColor = Color(0xFF3A7D99); // Background for setting items
-  static const Color sectionTitleColor = Color(0xFF3A7D99); // Color for section titles in light mode
-  static const Color itemTextColor = Colors.white; // Text inside setting items
-  static const Color iconColor = Colors.white; // Icons inside setting items
-  // Specific colors for THIS screen's bottom nav bar
+  static const Color headerColor = Color(0xFF5A9AB8);
+  static const Color itemBackgroundColor = Color(0xFF3A7D99);
+  static const Color sectionTitleColor = Color(0xFF3A7D99);
+  static const Color itemTextColor = Colors.white;
+  static const Color iconColor = Colors.white;
   static const Color bottomNavColor = Color(0xFF004A99);
   static const Color bottomNavSelectedColor = Colors.white;
   static const Color bottomNavUnselectedColor = Color(0xFFADD8E6);
 
-
   @override
   void initState() {
     super.initState();
-    // Initialize dark mode state based on the provider when the screen loads
-    _darkModeEnabled = context.read<ThemeNotifier>().themeMode == ThemeMode.dark;
-    // TODO: Load actual doctor profile and settings data here from Firestore/API
-    // Fetch data associated with FirebaseAuth.instance.currentUser?.uid
-    // _loadDoctorData(); // Example function call
+    _darkModeEnabled =
+        context.read<ThemeNotifier>().themeMode == ThemeMode.dark;
+    _loadDoctorData();
   }
 
-  /* Example data loading function (implement details later)
   Future<void> _loadDoctorData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      // Fetch data from Firestore based on user.uid
-      // DocumentSnapshot docSnap = await FirebaseFirestore.instance.collection('doctors').doc(user.uid).get();
-      // if (docSnap.exists && mounted) {
-      //   setState(() {
-      //     _currentDoctorName = docSnap.get('fullName') ?? 'N/A';
-      //     _currentEmail = docSnap.get('email') ?? 'N/A';
-      //     // ... load other fields ...
-      //   });
-      // }
-      // Load settings preferences if stored separately
+    // ... (keep as is)
+    if (!mounted) return;
+    setState(() {
+      _isLoadingProfile = true;
+      _profileErrorMessage = null;
+    });
+
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+          _profileErrorMessage = "User not logged in. Please log in again.";
+          _currentDoctorName = "N/A";
+          _currentGender = "N/A";
+          _currentBirthDate = "N/A";
+          _currentEmail = "N/A";
+        });
+      }
+      return;
+    }
+
+    try {
+      DocumentSnapshot doctorDoc =
+          await _firestore.collection('doctors').doc(currentUser.uid).get();
+
+      if (doctorDoc.exists && mounted) {
+        Map<String, dynamic> data = doctorDoc.data() as Map<String, dynamic>;
+        String birthDateStr = "N/A";
+        if (data['birthDate'] != null && data['birthDate'] is Timestamp) {
+          Timestamp dobTimestamp = data['birthDate'];
+          birthDateStr = DateFormat('dd/MM/yyyy').format(dobTimestamp.toDate());
+        } else if (data['birthDate'] is String) {
+          birthDateStr = data['birthDate'];
+        }
+
+        setState(() {
+          _currentDoctorName =
+              data['fullName'] ??
+              "${data['firstName']} ${data['lastName']}" ??
+              "N/A";
+          _currentGender = data['gender'] ?? "N/A";
+          _currentBirthDate = birthDateStr;
+          _currentEmail = data['email'] ?? currentUser.email ?? "N/A";
+          _isLoadingProfile = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+          _profileErrorMessage = "Profile data not found.";
+          _currentDoctorName = "N/A";
+          _currentGender = "N/A";
+          _currentBirthDate = "N/A";
+          _currentEmail = currentUser.email ?? "N/A";
+        });
+      }
+    } catch (e) {
+      print("Error fetching doctor data for settings: $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingProfile = false;
+          _profileErrorMessage = "Error loading profile: ${e.toString()}";
+          _currentDoctorName = "Error";
+          _currentGender = "Error";
+          _currentBirthDate = "Error";
+          _currentEmail = "Error";
+        });
+      }
     }
   }
-  */
 
-
-  // --- LOGOUT FUNCTION ---
   Future<void> _logout() async {
-    // Add a loading indicator if desired
-    // setState(() => _isLoggingOut = true);
-    try {
-      // Show confirmation dialog
-      final bool? confirmLogout = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false, // User must tap button
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Confirm Logout'),
-            content: const Text('Are you sure you want to log out?'),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(false), // Return false
-              ),
-              TextButton(
-                child: const Text('Log Out'),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                onPressed: () => Navigator.of(context).pop(true), // Return true
-              ),
-            ],
-          );
-        },
-      );
+    // ... (keep as is)
+    final bool? confirmLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('Log Out'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
 
-      // Proceed only if user confirmed
-      if (confirmLogout == true) {
+    if (confirmLogout == true) {
+      try {
         await FirebaseAuth.instance.signOut();
-        // Check if the widget is still mounted before navigating
         if (mounted) {
-          // Navigate to Login Screen and remove all previous routes
           Navigator.of(context).pushNamedAndRemoveUntil(
-            MyApp.loginRoute, // Use the constant defined in MyApp (main.dart)
-            (Route<dynamic> route) => false, // Remove all routes below
+            MyApp.loginRoute,
+            (Route<dynamic> route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logout error: ${e.toString()}')),
           );
         }
       }
-    } on FirebaseAuthException catch (e) {
-      print("Error during logout: ${e.code} - ${e.message}");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Logout failed: ${e.message}'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      print("An unexpected error occurred during logout: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An unexpected error occurred during logout.'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-       // If using a loading indicator, stop it here
-       // if (mounted) setState(() => _isLoggingOut = false);
     }
   }
-  // --- END LOGOUT FUNCTION ---
 
-  // --- Helper: Navigate to Edit Setting (Shows Placeholder) ---
   void _navigateToEditSetting(String settingType, String currentValue) async {
-    print('Attempting to edit setting: $settingType');
-    // Placeholder Action: Show SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navigation to edit "$settingType" is not implemented yet.'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    // TODO: Implement actual navigation to specific edit screens based on settingType
-    // e.g., Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfileFieldScreen(field: settingType, initialValue: currentValue)));
+    // ... (keep as is, including password reset logic)
+    if (settingType == 'Password') {
+      _handlePasswordReset();
+    } else {
+      print('Attempting to edit setting: $settingType');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Navigation to edit "$settingType" is not implemented yet.',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  // --- Helper Widget: Section Title ---
+  Future<void> _handlePasswordReset() async {
+    // ... (keep as is)
+    if (_currentEmail.isEmpty ||
+        _currentEmail == "N/A" ||
+        _currentEmail == "Loading..." ||
+        _currentEmail == "Error") {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not send reset email. User email is not available.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Text(
+            'A password reset link will be sent to $_currentEmail. Do you want to continue?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('Send Email'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true && mounted) {
+      setState(() {
+        _isSendingPasswordReset = true;
+      });
+      try {
+        await _auth.sendPasswordResetEmail(email: _currentEmail);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Password reset email sent to $_currentEmail. Please check your inbox (and spam folder).',
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        print("Error sending password reset email: $e");
+        String message = "Failed to send password reset email.";
+        if (e.code == 'user-not-found') {
+          message = "No user found with this email address.";
+        } else if (e.code == 'invalid-email') {
+          message = "The email address is not valid.";
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        print("Unexpected error sending password reset: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('An unexpected error occurred. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSendingPasswordReset = false;
+          });
+        }
+      }
+    }
+  }
+
   Widget _buildSectionTitle(String title, BuildContext context) {
+    // ... (keep as is)
     final theme = Theme.of(context);
-    // Use theme's text color, fallback to specific color if needed
-    final effectiveColor = theme.textTheme.titleMedium?.color ??
-                           (theme.brightness == Brightness.dark ? Colors.white70 : sectionTitleColor);
+    final effectiveColor =
+        theme.textTheme.titleMedium?.color ??
+        (theme.brightness == Brightness.dark
+            ? Colors.white70
+            : sectionTitleColor);
     return Padding(
       padding: const EdgeInsets.only(top: 25.0, bottom: 10.0, left: 5.0),
       child: Text(
@@ -175,14 +295,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helper Widget: Account Setting Item ---
   Widget _buildAccountSettingItem(String title, {String? currentValue}) {
+    // ... (keep as is)
     final theme = Theme.of(context);
-    // Use theme colors for better adaptability or fallbacks
-    final itemBg = theme.brightness == Brightness.dark ? Colors.grey[800]! : itemBackgroundColor;
-    final textColor = theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
-    final valueColor = theme.brightness == Brightness.dark ? Colors.white70 : Colors.white.withOpacity(0.8);
-    final chevronColor = theme.brightness == Brightness.dark ? Colors.white54 : iconColor;
+    final itemBg =
+        theme.brightness == Brightness.dark
+            ? Colors.grey[800]!
+            : itemBackgroundColor;
+    final textColor =
+        theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
+    final valueColor =
+        theme.brightness == Brightness.dark
+            ? Colors.white70
+            : Colors.white.withOpacity(0.8);
+    final chevronColor =
+        theme.brightness == Brightness.dark ? Colors.white54 : iconColor;
+    bool isProfileItem = [
+      'Name',
+      'Gender',
+      'Birth date',
+      'Email',
+    ].contains(title);
+    bool showLoadingIndicator = _isLoadingProfile && isProfileItem;
+    bool showPasswordLoading = title == 'Password' && _isSendingPasswordReset;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -190,10 +325,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: itemBg,
         borderRadius: BorderRadius.circular(15.0),
         child: InkWell(
-          onTap: () => _navigateToEditSetting(title, currentValue ?? ''),
+          onTap:
+              (showLoadingIndicator || showPasswordLoading)
+                  ? null
+                  : () => _navigateToEditSetting(title, currentValue ?? ''),
           borderRadius: BorderRadius.circular(15.0),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 15.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 15.0,
+              vertical: 15.0,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -201,7 +342,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (currentValue != null)
+                    if (showLoadingIndicator || showPasswordLoading)
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+                        ),
+                      )
+                    else if (currentValue != null)
                       Flexible(
                         child: Text(
                           currentValue,
@@ -210,8 +360,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           textAlign: TextAlign.end,
                         ),
                       ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.chevron_right, color: chevronColor, size: 24),
+                    if (!(title == 'Password' && showPasswordLoading))
+                      const SizedBox(width: 8),
+                    if (!(title == 'Password' && showPasswordLoading))
+                      Icon(Icons.chevron_right, color: chevronColor, size: 24),
                   ],
                 ),
               ],
@@ -222,32 +374,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helper Widget: Switch Item ---
-  Widget _buildSwitchItem(String title, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildSwitchItem(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    // ... (keep as is)
     final theme = Theme.of(context);
-    final itemBg = theme.brightness == Brightness.dark ? Colors.grey[800]! : itemBackgroundColor;
-    final textColor = theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
+    final itemBg =
+        theme.brightness == Brightness.dark
+            ? Colors.grey[800]!
+            : itemBackgroundColor;
+    final textColor =
+        theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5.0),
         decoration: BoxDecoration(
-          color: itemBg, borderRadius: BorderRadius.circular(15.0),
+          color: itemBg,
+          borderRadius: BorderRadius.circular(15.0),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(title, style: TextStyle(color: textColor, fontSize: 16)),
+              child: Text(
+                title,
+                style: TextStyle(color: textColor, fontSize: 16),
+              ),
             ),
             Switch(
               value: value,
-              onChanged: onChanged,
+              onChanged: (newValue) {
+                onChanged(newValue);
+              },
               activeColor: theme.colorScheme.primary,
               activeTrackColor: theme.colorScheme.primary.withOpacity(0.5),
-              inactiveThumbColor: theme.brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[50],
-              inactiveTrackColor: theme.brightness == Brightness.dark ? Colors.white30 : Colors.black26,
+              inactiveThumbColor:
+                  theme.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[50],
+              inactiveTrackColor:
+                  theme.brightness == Brightness.dark
+                      ? Colors.white30
+                      : Colors.black26,
             ),
           ],
         ),
@@ -255,20 +427,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helper Widget: Language Dropdown Item ---
   Widget _buildLanguageDropdownItem() {
+    // ... (keep as is)
     final theme = Theme.of(context);
-    final itemBg = theme.brightness == Brightness.dark ? Colors.grey[800]! : itemBackgroundColor;
-    final textColor = theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
-    final dropdownBg = theme.brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[100]!;
-    final dropdownTextColor = theme.brightness == Brightness.dark ? Colors.white : Colors.black87;
-    final dropdownIconColor = theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54;
+    final itemBg =
+        theme.brightness == Brightness.dark
+            ? Colors.grey[800]!
+            : itemBackgroundColor;
+    final textColor =
+        theme.brightness == Brightness.dark ? Colors.white : itemTextColor;
+    final dropdownBg =
+        theme.brightness == Brightness.dark
+            ? Colors.grey[700]!
+            : Colors.grey[100]!;
+    final dropdownTextColor =
+        theme.brightness == Brightness.dark ? Colors.white : Colors.black87;
+    final dropdownIconColor =
+        theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Container(
-        padding: const EdgeInsets.only(left: 15.0, right: 8.0, top: 5.0, bottom: 5.0),
-        decoration: BoxDecoration(color: itemBg, borderRadius: BorderRadius.circular(15.0)),
+        padding: const EdgeInsets.only(
+          left: 15.0,
+          right: 8.0,
+          top: 5.0,
+          bottom: 5.0,
+        ),
+        decoration: BoxDecoration(
+          color: itemBg,
+          borderRadius: BorderRadius.circular(15.0),
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -283,15 +472,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (newValue != null) {
                     setState(() => _selectedLanguage = newValue);
                     print('Language changed to: $newValue');
-                    // TODO: Implement actual language change using localization package
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Language switching not implemented yet.'), duration: Duration(seconds: 2)),
+                      const SnackBar(
+                        content: Text(
+                          'Language switching not implemented yet.',
+                        ),
+                      ),
                     );
                   }
                 },
-                items: _languages.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value));
-                }).toList(),
+                items:
+                    _languages.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
               ),
             ),
           ],
@@ -300,27 +496,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helper Widget: Call Support Button ---
+  // --- MODIFIED: Helper Widget: Call Support Button ---
   Widget _buildCallSupportButton() {
     final theme = Theme.of(context);
-    final buttonBg = theme.brightness == Brightness.dark ? Colors.grey[700]! : Colors.blueGrey[50]!;
-    final buttonTextColor = theme.textTheme.bodyLarge?.color ?? (theme.brightness == Brightness.dark ? Colors.white : Colors.black);
-    final buttonIconColor = theme.iconTheme.color ?? (theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54);
+    final buttonBg =
+        theme.brightness == Brightness.dark
+            ? Colors.grey[700]!
+            : Colors.blueGrey[50]!;
+    final buttonTextColor =
+        theme.textTheme.bodyLarge?.color ??
+        (theme.brightness == Brightness.dark ? Colors.white : Colors.black);
+    final buttonIconColor =
+        theme.iconTheme.color ??
+        (theme.brightness == Brightness.dark ? Colors.white70 : Colors.black54);
 
     return ElevatedButton.icon(
       icon: Icon(Icons.call_outlined, size: 20, color: buttonIconColor),
-      label: Text('Call app support', style: TextStyle(fontSize: 16, color: buttonTextColor)),
-      onPressed: () {
-        print('Call app support tapped');
-        // TODO: Implement call functionality (e.g., using url_launcher package to dial a number)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Call support not implemented yet.'), duration: Duration(seconds: 2)),
+      label: Text(
+        'Call Emergency (911)',
+        style: TextStyle(fontSize: 16, color: buttonTextColor),
+      ), // Updated Label
+      onPressed: () async {
+        // Show confirmation dialog before calling
+        final bool? confirmCall = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false, // User must tap button!
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Confirm Emergency Call'),
+              content: const Text(
+                'You are about to call 911. Only proceed in a genuine emergency. Are you sure?',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+                TextButton(
+                  child: const Text(
+                    'CALL 911',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  onPressed: () => Navigator.of(context).pop(true),
+                ),
+              ],
+            );
+          },
         );
+
+        if (confirmCall == true) {
+          // FOR TESTING: Use a safe number first, e.g., your own number or a test line.
+          // const String phoneNumber = 'tel:YOUR_TEST_NUMBER_HERE'; // E.g., 'tel:1234567890'
+          const String phoneNumber = 'tel:911'; // PRODUCTION: EMERGENCY ONLY
+
+          final Uri phoneUri = Uri.parse(phoneNumber);
+
+          if (await canLaunchUrl(phoneUri)) {
+            await launchUrl(phoneUri);
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not launch $phoneNumber')),
+              );
+            }
+            print('Could not launch $phoneNumber');
+          }
+        }
       },
       style: ElevatedButton.styleFrom(
-        backgroundColor: buttonBg,
-        foregroundColor: buttonTextColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0)),
+        backgroundColor: Colors.red[700], // Make button more prominent/warning
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
         elevation: 1,
         minimumSize: const Size(double.infinity, 50),
@@ -328,10 +578,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Helper Widget: Log Out Button ---
   Widget _buildLogoutButton() {
+    // ... (keep as is)
     final theme = Theme.of(context);
-    final buttonBg = theme.brightness == Brightness.dark ? Colors.grey[800]! : Colors.white;
+    final buttonBg =
+        theme.brightness == Brightness.dark ? Colors.grey[800]! : Colors.white;
     final buttonBorderColor = Colors.redAccent.withOpacity(0.5);
     final buttonTextColor = Colors.redAccent;
 
@@ -339,15 +590,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icon(Icons.logout, color: buttonTextColor),
       label: Text(
         'Log out',
-        style: TextStyle(color: buttonTextColor, fontWeight: FontWeight.bold, fontSize: 16),
+        style: TextStyle(
+          color: buttonTextColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
       ),
-      // --- USE THE LOGOUT FUNCTION ---
       onPressed: _logout,
       style: ElevatedButton.styleFrom(
         backgroundColor: buttonBg,
         foregroundColor: buttonTextColor,
         side: BorderSide(color: buttonBorderColor),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0),
+        ),
         padding: const EdgeInsets.symmetric(vertical: 15.0),
         minimumSize: const Size(double.infinity, 50),
         elevation: 1,
@@ -355,122 +611,186 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Bottom Nav Tap Handler (For THIS screen's custom bar) ---
   void _onItemTapped(int index) {
-    // Prevent navigation if already on the target screen index
+    // ... (keep as is)
     if (index == _screenIndex) return;
-
-    // Use named routes defined in main.dart
-    // Ensure these routes exist and point to the correct Doctor screens
     switch (index) {
-      case 0: // Home
-        // Navigate and remove history IF coming from a different tab
-        Navigator.pushNamedAndRemoveUntil(context, MyApp.doctorHomeRoute, (route) => false);
+      case 0:
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          MyApp.doctorHomeRoute,
+          (route) => false,
+        );
         break;
-      case 1: // Patients
-        Navigator.pushReplacementNamed(context, '/doctor_patients'); // Replace with your actual patients route name
+      case 1:
+        Navigator.pushReplacementNamed(context, MyApp.doctorPatientsRoute);
         break;
-      case 2: // Notes
-        Navigator.pushReplacementNamed(context, '/doctor_notes'); // Replace with your actual notes route name
-        break;
-      case 3: // Settings (This screen) - Do nothing as we are already here
+      case 2:
+        Navigator.pushReplacementNamed(context, MyApp.doctorNotesRoute);
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... ( AppBar, BottomNav, and bodyContent logic - keep as is from previous answer)
     final theme = Theme.of(context);
     final currentScaffoldBg = theme.scaffoldBackgroundColor;
-    final currentAppBarFgColor = theme.appBarTheme.foregroundColor ?? (theme.brightness == Brightness.dark ? Colors.white : headerColor);
+    final currentAppBarFgColor =
+        theme.appBarTheme.foregroundColor ??
+        (theme.brightness == Brightness.dark ? Colors.white : headerColor);
+
+    Widget bodyContent;
+
+    if (_isLoadingProfile && _profileErrorMessage == null) {
+      bodyContent = const Center(child: CircularProgressIndicator());
+    } else if (_profileErrorMessage != null) {
+      bodyContent = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _profileErrorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.red.shade300, fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loadDoctorData,
+                child: const Text("Retry"),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      bodyContent = SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('Account Settings', context),
+            _buildAccountSettingItem('Name', currentValue: _currentDoctorName),
+            _buildAccountSettingItem('Gender', currentValue: _currentGender),
+            _buildAccountSettingItem(
+              'Birth date',
+              currentValue: _currentBirthDate,
+            ),
+            _buildAccountSettingItem('Email', currentValue: _currentEmail),
+            _buildAccountSettingItem('Password'),
+            _buildAccountSettingItem('Two-Factor Authentication'),
+
+            _buildSectionTitle('Notification Preferences', context),
+            _buildSwitchItem(
+              'Weekly progress reports summary',
+              _weeklyReportsEnabled,
+              (value) => setState(() => _weeklyReportsEnabled = value),
+            ),
+            _buildSwitchItem(
+              'New patient assigned alerts',
+              _newPatientsEnabled,
+              (value) => setState(() => _newPatientsEnabled = value),
+            ),
+
+            _buildSectionTitle('App Preferences', context),
+            _buildSwitchItem(
+              'Dark Mode',
+              context.watch<ThemeNotifier>().isDarkMode,
+              (value) {
+                context.read<ThemeNotifier>().setThemeMode(
+                  value ? ThemeMode.dark : ThemeMode.light,
+                );
+              },
+            ),
+            _buildLanguageDropdownItem(),
+
+            _buildSectionTitle('Contact Support', context),
+            _buildCallSupportButton(), // This will now attempt to call 911
+            const SizedBox(height: 30),
+
+            _buildSectionTitle('Account Actions', context),
+            _buildLogoutButton(),
+            const SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: theme.appBarTheme.backgroundColor ?? headerColor,
         elevation: theme.appBarTheme.elevation ?? 0,
-        automaticallyImplyLeading: false, // Remove back arrow if this is a main tab
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Icon(Icons.settings_outlined, color: currentAppBarFgColor, size: 28),
+            Icon(
+              Icons.settings_outlined,
+              color: currentAppBarFgColor,
+              size: 28,
+            ),
             const SizedBox(width: 10),
             Text(
               'Settings',
               style: TextStyle(
-                color: currentAppBarFgColor, fontSize: 22, fontWeight: FontWeight.bold,
+                color: currentAppBarFgColor,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
       ),
       backgroundColor: currentScaffoldBg,
-
-      // --- USE CUSTOM BOTTOM NAV BAR ---
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: theme.dividerColor, width: 0.5)), // Use theme divider color
+          border: Border(
+            top: BorderSide(color: theme.dividerColor, width: 0.5),
+          ),
         ),
         child: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.groups_outlined), label: 'Patients'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Notes'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'), // Updated icon
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.groups_outlined),
+              label: 'Patients',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              label: 'Notes',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
           ],
-          currentIndex: _screenIndex, // Highlight Settings (index 3)
-          onTap: _onItemTapped, // Use the handler defined above
+          currentIndex: _screenIndex,
+          onTap: _onItemTapped,
           type: BottomNavigationBarType.fixed,
-          backgroundColor: theme.bottomNavigationBarTheme.backgroundColor ?? bottomNavColor,
-          selectedItemColor: theme.bottomNavigationBarTheme.selectedItemColor ?? bottomNavSelectedColor,
-          unselectedItemColor: theme.bottomNavigationBarTheme.unselectedItemColor ?? bottomNavUnselectedColor,
+          backgroundColor:
+              theme.bottomNavigationBarTheme.backgroundColor ?? bottomNavColor,
+          selectedItemColor:
+              theme.bottomNavigationBarTheme.selectedItemColor ??
+              bottomNavSelectedColor,
+          unselectedItemColor:
+              theme.bottomNavigationBarTheme.unselectedItemColor ??
+              bottomNavUnselectedColor,
           showSelectedLabels: false,
           showUnselectedLabels: false,
-          selectedFontSize: 1,
-          unselectedFontSize: 1,
           elevation: theme.bottomNavigationBarTheme.elevation ?? 5,
-          selectedIconTheme: theme.bottomNavigationBarTheme.selectedIconTheme ?? const IconThemeData(size: 28),
-          unselectedIconTheme: theme.bottomNavigationBarTheme.unselectedIconTheme ?? const IconThemeData(size: 24),
+          selectedIconTheme:
+              theme.bottomNavigationBarTheme.selectedIconTheme ??
+              const IconThemeData(size: 28),
+          unselectedIconTheme:
+              theme.bottomNavigationBarTheme.unselectedIconTheme ??
+              const IconThemeData(size: 24),
         ),
       ),
-      // --- END CUSTOM BOTTOM NAV BAR ---
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 20.0), // Bottom padding reduced
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Account Settings ---
-            _buildSectionTitle('Account Settings', context),
-            _buildAccountSettingItem('Name', currentValue: _currentDoctorName),
-            _buildAccountSettingItem('Gender', currentValue: _currentGender),
-            _buildAccountSettingItem('Birth date', currentValue: _currentBirthDate),
-            _buildAccountSettingItem('Email', currentValue: _currentEmail),
-            _buildAccountSettingItem('Password'), // No current value shown
-            _buildAccountSettingItem('Two-Factor Authentication'), // No current value shown
-
-            // --- Notification Preferences ---
-            _buildSectionTitle('Notification Preferences', context),
-            _buildSwitchItem('Weekly progress reports summary', _weeklyReportsEnabled, (value) => setState(() => _weeklyReportsEnabled = value)),
-            _buildSwitchItem('New patient assigned alerts', _newPatientsEnabled, (value) => setState(() => _newPatientsEnabled = value)),
-
-            // --- App Preferences ---
-            _buildSectionTitle('App Preferences', context),
-            _buildSwitchItem('Dark Mode', context.watch<ThemeNotifier>().isDarkMode, (value) {
-              context.read<ThemeNotifier>().setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-            }),
-            _buildLanguageDropdownItem(),
-
-            // --- Contact Support ---
-            _buildSectionTitle('Contact Support', context),
-            _buildCallSupportButton(),
-            const SizedBox(height: 30),
-
-            // --- Log Out ---
-            _buildSectionTitle('Account Actions', context),
-            _buildLogoutButton(), // Button calls _logout
-            const SizedBox(height: 20), // Final padding
-          ],
-        ),
-      ),
+      body: bodyContent,
     );
   }
 }
